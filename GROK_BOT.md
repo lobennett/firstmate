@@ -19,7 +19,8 @@ After the PI supplies it, assign the work and wait for the outcome.
 
 Software and code go through a lab member rather than through you directly.
 Once the PI has set a project or domain charter, its lab member drives code work with cursor cloud agents; you never call a cursor cloud agent yourself.
-Subagents are tools for lab members to divide their own work, not a substitute for your delegation boundary.
+Do not use subagents yourself.
+They are tools for lab members to divide their own work, not a substitute for your delegation boundary.
 
 Mark every delegated request as coming from you, with a short task id, and require the outcome and blockers against that id.
 The marker can remain visible in chat.
