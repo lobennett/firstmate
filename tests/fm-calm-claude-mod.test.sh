@@ -154,6 +154,46 @@ JS
   pass "the Pi working ship renders byte-for-byte the shared sprite core's frame painted in standard ANSI, at every width, cadence step, freeze, clamp, and reset"
 }
 
+test_resting_state_frames() {
+  local out
+  cat >"$TMP_ROOT/resting.mjs" <<JS
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const { createRestingStateWave, parseCalmWorkingPresentation, restingStateChoice } = await import(pathToFileURL($(js_string "$MOD") + "/lib/fm-calm-resting-state.ts").href);
+const text = (frame) => frame.map(row => row.map(run => run.text).join(""));
+for (const legacy of [undefined, "boat", "unknown", "on"]) assert.equal(parseCalmWorkingPresentation(legacy), "boat");
+assert.equal(parseCalmWorkingPresentation("resting-state\\n"), "resting-state");
+assert.deepEqual(restingStateChoice("", false, "boat"), { active: true, presentation: "resting-state" });
+assert.deepEqual(restingStateChoice("", true, "resting-state"), { active: false, presentation: "resting-state" });
+assert.equal(restingStateChoice("invalid", true, "boat"), undefined);
+for (const width of [0, 1, 2, 3, 8, 12, 48, 80, 180]) {
+  const wave = createRestingStateWave();
+  const first = text(wave.frame(width));
+  const frames = new Set();
+  for (let tick = 0; tick < 160; tick++) {
+    const frame = text(wave.frame(width));
+    assert.equal(frame.length, width === 0 ? 0 : 2);
+    for (const row of frame) {
+      assert.equal(Array.from(row).length, width);
+      assert.match(row, /^[ \\u2800-\\u28ff]+$/);
+      assert.ok(row.trim().length <= 48);
+    }
+    frames.add(JSON.stringify(frame));
+    wave.tick();
+  }
+  assert.deepEqual(text(wave.frame(width)), first, "cycle did not close without a jump");
+  if (width) assert.ok(frames.size > 3, "wave did not drift");
+  wave.tick(); wave.tick();
+  wave.restoreLastRendered();
+  assert.deepEqual(text(wave.frame(width)), first, "unpainted/hidden ticks leaked");
+}
+console.log("resting-state-ok");
+JS
+  out=$(run_node "$TMP_ROOT/resting.mjs" 2>&1) || fail "Resting State frames: $out"
+  assert_contains "$out" "resting-state-ok" "wave checks did not complete"
+  pass "Resting State paints one bounded smooth curve at every width and phase, closes its slow cycle, freezes hidden motion, and defaults legacy preferences to the boat"
+}
+
 test_raster_packing() {
   local out
   cat >"$TMP_ROOT/raster.mjs" <<JS
@@ -599,6 +639,7 @@ JS
 
 test_plugin_shape
 test_shared_sprite_and_pi_rendering
+test_resting_state_frames
 test_raster_packing
 test_presentation_policy
 test_branch_notes_over_the_store_owner

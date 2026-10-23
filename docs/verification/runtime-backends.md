@@ -6,6 +6,43 @@ This record contains reusable version-scoped evidence for active runtime guarant
 The backend guides own current setup, safety boundaries, and limitations.
 Exact task chronology, branch names, temporary homes, local paths, process ids, thread ids, and delivery transcripts remain in private reports or PR evidence.
 
+## Resting State working presentation
+
+Verified on 2026-10-23 on macOS arm64 with Pi 1.4.0, Claude Code 2.1.309, and Node v26.0.0.
+[`calm.md`](../calm.md#resting-state) owns current usage and compatibility; the existing Calm adapters remain the only transcript and queued-input presentation owners.
+The native Pi test used an isolated project/home and private tmux socket directory, with a named non-default Herdr lab and unchanged default-session tripwire on cleanup.
+No runtime backend or other harness gains a native renderer from this change.
+
+```sh
+bin/fm-test-run.sh tests/fm-calm-pi-extension.test.sh tests/fm-calm-pi-queue-retention-live-e2e.test.sh tests/fm-pi-primary-types.test.sh tests/fm-calm-claude-mod.test.sh tests/fm-calm-claude-mod-plugin.test.sh
+```
+
+Relevant exact output:
+
+```text
+ok - Pi Resting State command draws one moving two-row wave, reflows without wrapping at 12 columns, clears on abort and settle, and retains Calm visibility and input behavior
+ok - Pi 1.4.0 exposes every queue-retention member Calm preflights before hiding queued Firstmate rows
+ok - tracked Pi extensions pass strict no-emit typecheck against Pi 1.1.0
+ok - tracked Pi extensions pass strict no-emit typecheck against Pi 1.2.0
+ok - Resting State paints one bounded smooth curve at every width and phase, closes its slow cycle, freezes hidden motion, and defaults legacy preferences to the boat
+FM_TEST_SUMMARY total=5 failed=0 skipped_gate=0 duration_ms=82853
+```
+
+Claude Code strictly validated the module from both its physical and auto-load paths and passed its engine-executed plugin suites, including explicit command selection, failed writes, reduced motion, palette, hidden-motion freeze, and exact default-off function-hooks behavior.
+Native Claude TUI proof is **unverified**, not a passing test: the auto-permission-mode live test stopped at the workspace-trust dialog, without accepting it or changing global settings.
+The missing operator step is explicit trust confirmation for the isolated test project before native drawing can be observed; the guard refuses to make that security decision itself.
+The opt-in native entry point is:
+
+```sh
+FM_CLAUDE_CALM_LIVE_E2E=1 bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh
+```
+
+Exact refusal:
+
+```text
+not ok - Claude Code 2.1.309 (Claude Code) requires operator confirmation before the live renderer proof; no dialog was accepted
+```
+
 ## Polytoken worker lifecycle
 
 Verified on 2026-10-14 with Polytoken 0.9.0 on macOS arm64 using the tmux worker path.

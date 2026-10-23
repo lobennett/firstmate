@@ -18,7 +18,9 @@
 #      without moving a store marker or reaching the model, and a resume shows each
 #      anchor once.
 # The project and FM_HOME are isolated; Claude keeps using its existing managed
-# authentication and one trusted temporary folder. A few Haiku turns are submitted.
+# authentication and auto permission mode. Workspace trust requires explicit operator
+# confirmation: the test refuses the dialog rather than accepting it. A few Haiku turns
+# are submitted only when the session can start without a security confirmation.
 # shellcheck disable=SC2016 # the model, not this test shell, reads the prompt text
 set -u
 
@@ -75,7 +77,7 @@ launch() {  # <debug-log> <flag: 1|0> [claude args...]
   [ "$flag" = 1 ] && flag_env="CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1"
   tmux -L "$SOCKET" kill-session -t "$SESSION" 2>/dev/null || true
   tmux -L "$SOCKET" new-session -d -s "$SESSION" -x 160 -y 44 -c "$PROJECT" \
-    "env $(unset_inherited) $flag_env FM_HOME='$FM_HOME_DIR' CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false CLAUDE_CODE_SEND_FEEDBACK=0 claude --model haiku --dangerously-skip-permissions --settings '{\"feedbackDrafts\":\"off\"}' --debug-file '$log' $*; printf '\nCLAUDE_EXIT=%s\n' \"\$?\"; sleep 30"
+    "env $(unset_inherited) $flag_env FM_HOME='$FM_HOME_DIR' CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false CLAUDE_CODE_SEND_FEEDBACK=0 claude --model haiku --permission-mode auto --settings '{\"feedbackDrafts\":\"off\"}' --debug-file '$log' $*; printf '\nCLAUDE_EXIT=%s\n' \"\$?\"; sleep 30"
 }
 
 screen() {
@@ -100,23 +102,11 @@ dialog_open() {  # <screen text>
   return 1
 }
 
-# The folder-trust dialog opens with its cursor on "No, exit", so Enter alone would
-# end the session: move the cursor onto the trusting option first, then confirm.
-answer_trust_dialog() {  # <screen text>
-  local selected
-  case "$1" in
-    *'Yes, I trust this folder'*) : ;;
-    *) return 0 ;;
-  esac
-  selected=$(printf '%s\n' "$1" | grep -F '❯' | head -1)
-  case "$selected" in
-    *'Yes, I trust this folder'*) enter ;;
-    *) tmux -L "$SOCKET" send-keys -t "$SESSION" Down ;;
-  esac
-}
+# Security consent belongs to the operator, not this renderer test.
+# Never accept bypass, trust, or other security dialogs on the operator's behalf.
 
-# Wait until the screen shows <text> (a fixed string), answering the folder-trust
-# dialog on the way; the wait is iteration-counted so it stretches under load.
+# Wait until the screen shows <text> (a fixed string), refusing security dialogs;
+# the wait is iteration-counted so it stretches under load.
 wait_screen() {  # <text> <what> [iterations]
   local text=$1 what=$2 limit=${3:-400} i=0 shot
   while [ "$i" -lt "$limit" ]; do
@@ -128,7 +118,8 @@ wait_screen() {  # <text> <what> [iterations]
         ;;
     esac
     if dialog_open "$shot"; then
-      answer_trust_dialog "$shot"
+      printf '%s\n' "$shot" >&2
+      fail "Claude Code $CLAUDE_VERSION requires operator confirmation before the live renderer proof; no dialog was accepted"
     else
       case "$shot" in
         *"$text"*) return 0 ;;
@@ -438,6 +429,40 @@ send '/exit'
 enter
 sleep 1
 pass "Claude Code $CLAUDE_VERSION resumes the transcript with Calm's hidden rows still hidden and the preference intact"
+
+# Resting State: use the real command and renderer, then verify settle/disable.
+launch "$LAB/debug-resting-state.log" 1
+wait_idle
+send '/resting-state on'
+enter
+sleep 1
+[ "$(cat "$FM_HOME_DIR/config/calm-presentation")" = resting-state ] || fail "Claude did not save the explicit wave choice"
+send "$PROMPT"
+enter
+wave_seen=0
+i=0
+while [ "$i" -lt 200 ]; do
+  screen >"$LAB/wave.txt"
+  if node -e 'process.exit(/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8")) ? 0 : 1)' "$LAB/wave.txt"; then
+    wave_seen=1
+    break
+  fi
+  sleep 0.1
+  i=$((i + 1))
+done
+[ "$wave_seen" = 1 ] || fail "Claude Code $CLAUDE_VERSION did not draw Resting State"
+case "$(screen)" in *"$HULL"*) fail "Claude drew the boat and wave together" ;; esac
+wait_settled 'the Resting State turn'
+screen >"$LAB/wave.txt"
+node -e 'if (/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8"))) throw Error("wave remained after settle")' "$LAB/wave.txt" || fail "Claude wave did not clear"
+send '/resting-state off'
+enter
+sleep 1
+[ "$(cat "$FM_HOME_DIR/config/calm")" = off ] || fail "Claude Resting State off did not restore stock presentation"
+send '/exit'
+enter
+sleep 1
+pass "Claude Code $CLAUDE_VERSION invokes Resting State explicitly, draws one wave instead of the boat, clears it on settle, and persists off"
 
 # --- 4. Supervision notes: shown with Calm off, from the store the host writes ----
 STATE_DIR="$FM_HOME_DIR/state"

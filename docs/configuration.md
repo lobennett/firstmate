@@ -148,6 +148,15 @@ Both written values end with one newline.
 Its behavior is now ordinary Calm, so it is still read as `on`.
 A home upgraded from `max` keeps Calm on rather than dropping to off.
 
+### Optional working visual (config/calm-presentation)
+
+Resting State adds the separate, gitignored `config/calm-presentation` preference beside `config/calm`, resolved through the same home and config-directory overrides.
+Its values are `resting-state` and `boat`, each written with one trailing newline.
+Absent, unreadable, or unrecognized values select the legacy boat without changing the on/off choice.
+Only an explicit visual selection writes this additive preference; existing Calm homes and their `on`, `off`, or legacy `max` values are not migrated.
+It is local to each home, not inherited secondmate configuration.
+[`calm.md`](calm.md#resting-state) owns exact command on/off/switch behavior.
+
 ### Saving and reloading the preference
 
 Each `/calm` command saves the new choice before changing live presentation.

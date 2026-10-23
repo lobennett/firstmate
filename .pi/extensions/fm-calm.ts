@@ -59,6 +59,13 @@ import {
   createCalmWorkingShipWidget,
 } from "./lib/fm-calm-working-ship.ts";
 import {
+  calmWorkingPresentationPath,
+  parseCalmWorkingPresentation,
+  RESTING_STATE_PALETTES,
+  restingStateChoice,
+  type CalmWorkingPresentation,
+} from "./lib/fm-calm-resting-state.ts";
+import {
   calmPresentationHides,
   calmPresentationIsActive,
   FIRSTMATE_CALM_PRESENTATION_EVENT,
@@ -135,11 +142,13 @@ export default function (pi: ExtensionAPI) {
   // continuations, retries, or compaction that stay inside the same run.
   let agentRunActive = false;
   let workingShipShown = false;
+  let presentation: CalmWorkingPresentation = "boat";
+  let shownPresentation: CalmWorkingPresentation = "boat";
   let workingShipWidgetDisposed = false;
   // One animation instance per extension lifetime. Hiding the working widget freezes
   // this state; the next working period resumes it. session_start resets it so a fresh
   // Pi session starts at the normal initial position. Never module-global.
-  const workingShipAnimation = createCalmWorkingShipAnimation();
+  const workingShipAnimation = createCalmWorkingShipAnimation(() => presentation);
 
   // Single owner of Calm's working-row presentation choice. The widget is only created
   // or removed on a real transition, so repeated starts cannot duplicate its timer.
@@ -150,12 +159,18 @@ export default function (pi: ExtensionAPI) {
     forceStockVisibility = false,
   ): void => {
     const showShip = agentRunActive && calmPresentationIsActive();
-    if (showShip !== workingShipShown) {
+    if (showShip !== workingShipShown || (showShip && shownPresentation !== presentation)) {
       workingShipShown = showShip;
+      shownPresentation = presentation;
       if (showShip) {
         ui.setWidget(CALM_WORKING_SHIP_WIDGET_KEY, (tui) => {
           workingShipWidgetDisposed = false;
-          const widget = createCalmWorkingShipWidget(tui, workingShipAnimation);
+          const widget = createCalmWorkingShipWidget(tui, workingShipAnimation, (text) => {
+            const theme = ui.theme;
+            if (typeof theme.style !== "function") return theme.fg("muted", text);
+            const color = RESTING_STATE_PALETTES[theme.appearance === "dark" ? "dark" : "light"];
+            return theme.style(text, { fg: { kind: "rgb", r: color >> 16, g: (color >> 8) & 255, b: color & 255 } });
+          });
           const dispose = widget.dispose;
           widget.dispose = () => {
             workingShipWidgetDisposed = true;
@@ -176,6 +191,11 @@ export default function (pi: ExtensionAPI) {
   const fmHome = process.env.FM_HOME || process.env.FM_ROOT_OVERRIDE || root;
   const configDirectory = process.env.FM_CONFIG_OVERRIDE || resolve(fmHome, "config");
   const calmPreferencePath = resolve(configDirectory, "calm");
+  const presentationPreferencePath = calmWorkingPresentationPath(calmPreferencePath);
+  const loadWorkingPresentation = (): CalmWorkingPresentation => {
+    try { return parseCalmWorkingPresentation(readFileSync(presentationPreferencePath, "utf8")); }
+    catch { return "boat"; }
+  };
   // "max" is the legacy value written by the removed third presentation level, whose
   // behavior is now ordinary Calm; a home upgraded from it restores as on rather than
   // dropping to off. docs/configuration.md owns the persisted value schema.
@@ -188,16 +208,16 @@ export default function (pi: ExtensionAPI) {
     }
     return stored === "on" || stored === "max";
   };
-  const persistCalmPreference = (active: boolean): void => {
-    mkdirSync(dirname(calmPreferencePath), { recursive: true });
-    const temporaryPath = `${calmPreferencePath}.${process.pid}.${randomUUID()}.tmp`;
+  const persistPreference = (path: string, value: string): void => {
+    mkdirSync(dirname(path), { recursive: true });
+    const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
     try {
-      writeFileSync(temporaryPath, active ? "on\n" : "off\n", {
+      writeFileSync(temporaryPath, value, {
         encoding: "utf8",
         flag: "wx",
         mode: 0o600,
       });
-      renameSync(temporaryPath, calmPreferencePath);
+      renameSync(temporaryPath, path);
     } finally {
       rmSync(temporaryPath, { force: true });
     }
@@ -429,6 +449,7 @@ export default function (pi: ExtensionAPI) {
     reportBuiltInLosses();
     calmToolRowRepaints.clear();
     exportRendering = false;
+    presentation = loadWorkingPresentation();
     setCalmPresentation(loadCalmPreference());
     setCalmStockExportRendering(false);
     publishPresentationState();
@@ -491,24 +512,53 @@ export default function (pi: ExtensionAPI) {
     applyWorkingPresentation(ctx.ui);
   });
 
+  const applyCalmChoice = (active: boolean, ui: ExtensionUIContext): void => {
+    setCalmPresentation(active);
+    if (active) activateBuiltInsIfNeeded(ui);
+    publishPresentationState();
+    applyWorkingPresentation(ui, true);
+    // Pi re-runs every assistant row's layout from this call even when the label is
+    // unchanged, which is what makes a toggle apply to rows already on screen.
+    ui.setHiddenThinkingLabel(active ? "" : undefined);
+    ui.setStatus("firstmate-calm", undefined);
+    refreshCalmPendingOperationalRows();
+
+    const expanded = ui.getToolsExpanded();
+    ui.setToolsExpanded(!expanded);
+    ui.setToolsExpanded(expanded);
+  };
+
   pi.registerCommand("calm", {
     description: "Toggle Firstmate's supported conversation-only transcript presentation.",
     handler: async (_args, ctx) => {
       const active = !calmPresentationIsActive();
-      persistCalmPreference(active);
-      setCalmPresentation(active);
-      if (active) activateBuiltInsIfNeeded(ctx.ui);
-      publishPresentationState();
-      applyWorkingPresentation(ctx.ui, true);
-      // Pi re-runs every assistant row's layout from this call even when the label is
-      // unchanged, which is what makes a toggle apply to rows already on screen.
-      ctx.ui.setHiddenThinkingLabel(active ? "" : undefined);
-      ctx.ui.setStatus("firstmate-calm", undefined);
-      refreshCalmPendingOperationalRows();
+      persistPreference(calmPreferencePath, active ? "on\n" : "off\n");
+      applyCalmChoice(active, ctx.ui);
+    },
+  });
 
-      const expanded = ctx.ui.getToolsExpanded();
-      ctx.ui.setToolsExpanded(!expanded);
-      ctx.ui.setToolsExpanded(expanded);
+  pi.registerCommand("resting-state", {
+    description: "Resting State wave and Calm visibility: [on|off|boat], no argument toggles the wave.",
+    handler: async (args, ctx) => {
+      const choice = restingStateChoice(args, calmPresentationIsActive(), presentation);
+      if (!choice) {
+        ctx.ui.notify("Usage: /resting-state [on|off|boat]", "warning");
+        return;
+      }
+      const previous = presentation;
+      try {
+        if (choice.presentation !== previous) persistPreference(presentationPreferencePath, `${choice.presentation}\n`);
+        persistPreference(calmPreferencePath, choice.active ? "on\n" : "off\n");
+      } catch (error) {
+        // Two independent preferences: restore the visual if saving the enable choice failed.
+        if (choice.presentation !== previous) {
+          try { persistPreference(presentationPreferencePath, `${previous}\n`); } catch { /* Report the write failure below. */ }
+        }
+        ctx.ui.notify(`Resting State unchanged: could not save preferences (${String(error)})`, "error");
+        return;
+      }
+      presentation = choice.presentation;
+      applyCalmChoice(choice.active, ctx.ui);
     },
   });
 }

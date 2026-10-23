@@ -64,7 +64,7 @@ describe("activation", () => {
   test("registers /calm at session start and stays a pass-through while off", async ($, on) => {
     const { clock, journal } = world(on);
     await $.session.start(sessionStart);
-    expect(journal.commands).toEqual(["calm"]);
+    expect(journal.commands).toEqual(["calm", "resting-state"]);
     expect(isStock(await $.ui.render(spinner()))).toBe(true);
     expect(isStock(await $.ui.render(toolUse()))).toBe(true);
     expect(isStock(await $.ui.render(toolResult()))).toBe(true);

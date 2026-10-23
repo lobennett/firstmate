@@ -7,7 +7,9 @@
 // which both harnesses share); this module owns only Pi's rendering of those frames
 // as standard ANSI escapes and the temporary TUI widget. `.pi/extensions/fm-calm.ts`
 // owns when the presentation is installed and removed, and stays the sole caller of
-// setWorkingVisible(). docs/calm.md owns the captain-facing contract.
+// setWorkingVisible(). The optional Resting State geometry lives in
+// ./fm-calm-resting-state.ts and uses this same widget and scheduler, with its painter
+// supplied by the owner for the current theme. docs/calm.md owns the usage contract.
 //
 // Continuity: one extension-owned animation instance survives hide/show within the same
 // Pi process and Calm extension lifetime. Disposing the widget freezes column,
@@ -32,6 +34,8 @@ import {
   type CalmWorkingShipSprite,
 } from "./fm-calm-working-ship-sprite.ts";
 
+import { createRestingStateWave, type CalmWorkingPresentation } from "./fm-calm-resting-state.ts";
+
 export { CALM_WORKING_SHIP_TICK_MS, CALM_WORKING_SHIP_TICKS_PER_MOVE };
 
 // Standard ANSI foreground codes only: no theme lookup, bright variant, or 256/RGB.
@@ -53,7 +57,7 @@ export const CALM_WORKING_SHIP_WIDGET_KEY = "calm-working-ship";
 
 export type CalmWorkingShipAnimation = Omit<CalmWorkingShipSprite, "frame"> & {
   /** Render one frame that exactly fits `width`, clamping the track to it first. */
-  render(width: number): string[];
+  render(width: number, paintWave?: (text: string) => string): string[];
 };
 
 /** One run painted as its standard ANSI escape, closed with a default-foreground reset. */
@@ -62,17 +66,24 @@ function paintRun(run: CalmWorkingShipRun): string {
   return `${ANSI_FOREGROUND[run.color]}${run.text}${RESET}`;
 }
 
-export function createCalmWorkingShipAnimation(): CalmWorkingShipAnimation {
+export function createCalmWorkingShipAnimation(
+  presentation: () => CalmWorkingPresentation = () => "boat",
+): CalmWorkingShipAnimation {
   const sprite = createCalmWorkingShipSprite();
+  const wave = createRestingStateWave();
   return {
     position: sprite.position,
     direction: sprite.direction,
     waterPhase: sprite.waterPhase,
-    restoreLastRendered: sprite.restoreLastRendered,
-    reset: sprite.reset,
+    restoreLastRendered: () => { sprite.restoreLastRendered(); wave.restoreLastRendered(); },
+    reset: () => { sprite.reset(); wave.reset(); },
     clampToWidth: sprite.clampToWidth,
-    tick: sprite.tick,
-    render(width: number): string[] {
+    tick: () => { if (presentation() === "resting-state") wave.tick(); else sprite.tick(); },
+    render(width: number, paintWave = (text: string) => `\u001b[38;5;66m${text}${RESET}`): string[] {
+      if (presentation() === "resting-state") {
+        return wave.frame(width).map((row) => row.map((run) =>
+          run.color === "plain" ? run.text : paintWave(run.text)).join(""));
+      }
       return sprite.frame(width).map((row) => row.map(paintRun).join(""));
     },
   };
@@ -89,6 +100,7 @@ export function createCalmWorkingShipAnimation(): CalmWorkingShipAnimation {
 export function createCalmWorkingShipWidget(
   tui: TUI,
   animation: CalmWorkingShipAnimation = createCalmWorkingShipAnimation(),
+  paintWave?: (text: string) => string,
 ): Component & { dispose(): void } {
   let disposed = false;
   const timer = setInterval(() => {
@@ -100,8 +112,8 @@ export function createCalmWorkingShipWidget(
   timer.unref?.();
 
   return {
-    render: (width) => (disposed ? [] : animation.render(width)),
-    // Every frame is rebuilt from fixed standard ANSI codes, so there is no cache.
+    render: (width) => (disposed ? [] : animation.render(width, paintWave)),
+    // Repaint from current geometry and the caller's live palette; there is no cache.
     invalidate: () => {},
     dispose: () => {
       if (disposed) return;
