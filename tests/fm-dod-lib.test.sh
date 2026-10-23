@@ -383,7 +383,7 @@ EOF
   out=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" "$ROOT/bin/fm-promote.sh" "$id" --mode direct-PR --yolo off 2>&1)
   status=$?
   [ "$status" -ne 0 ] || fail "promotion whose only Captain lines are fenced or indented examples should fail"
-  assert_contains "$out" "has no provenance-marked Captain's intent" \
+  assert_contains "$out" "has no provenance-marked ## PI's intent" \
     "fenced-example promotion did not refuse like an unmarked legacy brief"
   assert_absent "$home/data/$id/ship-instructions.md" \
     "fenced-example promotion published a fenced sample as captain intent"

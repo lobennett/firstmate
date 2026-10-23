@@ -352,10 +352,10 @@ STUB
       "$mode: promoted worker was not told to stop for any wrong worktree"
     assert_grep "git checkout -b fm/$id --" "$payload" \
       "$mode: promoted worker was not told to leave the scratch base for its ship branch"
-    assert_grep "## Captain's intent" "$payload" \
-      "$mode: promoted worker did not receive the Captain's intent subsection"
-    assert_grep "## Firstmate spec" "$payload" \
-      "$mode: promoted worker did not receive the Firstmate spec subsection"
+    assert_grep "## PI's intent" "$payload" \
+      "$mode: promoted worker did not receive the PI's intent subsection"
+    assert_grep "## Lab manager spec" "$payload" \
+      "$mode: promoted worker did not receive the Lab manager spec subsection"
 
     # Both the delivered prompt and persisted relaunch brief are public outputs.
     for contract in "$payload" "$home/data/$id/brief.md"; do
@@ -384,7 +384,7 @@ STUB
   done
 
   payload="$TMP_ROOT/promote-dod/payload-promote-dod-no-mistakes"
-  assert_grep "ask-user findings are never yours to answer: escalate to firstmate" "$payload" \
+  assert_grep "ask-user findings are never yours to answer: escalate to the lab manager" "$payload" \
     "promoted no-mistakes worker did not receive the ask-user escalation rule"
   assert_grep "write only the ask-user findings, verbatim and unparaphrased (id, severity, file, line, description, authority)" "$payload" \
     "promoted no-mistakes worker did not receive the ask-user-only snapshot contract"
@@ -586,7 +586,7 @@ EOF
   [ "$status" -ne 0 ] || fail "spawn of an unfilled ship brief should exit non-zero"
   assert_contains "$out" "still contains {TASK} or {FIRSTMATE_SPEC}" \
     "unfilled ship spawn did not name the leftover placeholders"
-  assert_contains "$out" "## Captain's intent" \
+  assert_contains "$out" "## PI's intent" \
     "unfilled ship spawn did not name the intent subsection to fill"
   assert_absent "$home/state/$id.meta" "unfilled ship spawn wrote task metadata"
 
@@ -685,10 +685,10 @@ EOF
     "legacy no-mistakes spawn rejected explicitly marked captain words"
   assert_present "$home/data/$id/launch-brief.md" \
     "marked legacy spawn did not render a current launch contract"
-  assert_grep "supersedes every earlier brief instruction about constructing \`--intent\`" \
+  assert_grep "supersedes every earlier assignment instruction about constructing \`--intent\`" \
     "$home/data/$id/launch-brief.md" \
     "marked legacy spawn did not override its stale intent instruction"
-  assert_grep "plus any later words the captain actually supplied" \
+  assert_grep "plus any later words the PI actually supplied" \
     "$home/data/$id/launch-brief.md" \
     "marked legacy launch contract excluded later captain clarifications"
   authorized=$(awk '$0 == "## Captain intent authorized for --intent" { emit=1; next } emit && /^$/ { exit } emit { print }' "$home/data/$id/launch-brief.md")
@@ -719,10 +719,10 @@ EOF
     "migrated launch contract omitted Captain's intent"
   assert_not_contains "$authorized" "Preserve the existing compatibility path." \
     "migrated launch contract included Firstmate spec in intent"
-  assert_grep "supersedes every earlier brief instruction about constructing \`--intent\`" \
+  assert_grep "supersedes every earlier assignment instruction about constructing \`--intent\`" \
     "$home/data/$id/launch-brief.md" \
     "migrated launch contract did not supersede its stale mixed-Task DoD"
-  assert_grep "plus any later words the captain actually supplied" \
+  assert_grep "plus any later words the PI actually supplied" \
     "$home/data/$id/launch-brief.md" \
     "migrated launch contract excluded later captain clarifications"
   assert_grep "The Definition of done's rule that \`--intent\` must be self-sufficient still governs" \
@@ -772,7 +772,7 @@ EOF
   out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
   status=$?
   [ "$status" -ne 0 ] || fail "spawn of empty Task subsections should exit non-zero"
-  assert_contains "$out" "must contain nonempty ## Captain's intent and ## Firstmate spec" \
+  assert_contains "$out" "must contain nonempty ## PI's intent and ## Lab manager spec" \
     "empty Task subsections were not rejected semantically"
   assert_absent "$home/state/$id.meta" "empty-subsection spawn wrote task metadata"
 
@@ -785,7 +785,7 @@ EOF
   out=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" "$PROMOTE" "$id" --mode direct-PR --yolo on 2>&1)
   status=$?
   [ "$status" -ne 0 ] || fail "promotion of an unfilled scout brief should exit non-zero"
-  assert_contains "$out" "preserve the original ask in ## Captain's intent" \
+  assert_contains "$out" "preserve the original ask in ## PI's intent" \
     "unfilled promotion did not preserve the original captain ask boundary"
   assert_contains "$out" "promotion generates a separate ship-time spec" \
     "unfilled promotion did not distinguish scout and ship Firstmate specs"
@@ -821,7 +821,7 @@ EOF
   out=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" "$PROMOTE" "$id" --mode direct-PR --yolo off 2>&1)
   status=$?
   [ "$status" -ne 0 ] || fail "promotion without provenance-marked captain intent should fail"
-  assert_contains "$out" "has no provenance-marked Captain's intent" \
+  assert_contains "$out" "has no provenance-marked ## PI's intent" \
     "unmarked legacy promotion did not explain the missing intent provenance"
   assert_absent "$home/data/$id/ship-instructions.md" \
     "unmarked legacy promotion published empty captain intent"
@@ -844,9 +844,9 @@ EOF
     "promotion did not preserve the original Captain's intent"
   assert_no_grep "Ship the identity-check fix without adding a classifier." "$brief" \
     "promotion reused the scout-time Firstmate spec as ship instructions"
-  spec_body=$(awk '$0 == "## Firstmate spec" { emit=1; next } emit && /^# / { exit } emit { print }' "$brief")
+  spec_body=$(awk '$0 == "## Lab manager spec" { emit=1; next } emit && /^# / { exit } emit { print }' "$brief")
   assert_contains "$spec_body" "Verify isolation before anything else" \
-    "promotion did not place its ship-time instructions in Firstmate spec"
+    "promotion did not place its ship-time instructions in Lab manager spec"
   assert_no_grep "SCOUT task" "$brief" \
     "promotion copied the scout Setup/Rules contract into Firstmate spec"
   assert_no_grep "# Setup" "$brief" \
@@ -912,8 +912,8 @@ EOF
   status=$?
   expect_code 0 "$status" "promotion of a pre-subsection scout brief should succeed"
   brief="$home/data/$id/ship-instructions.md"
-  intent_body=$(awk '$0 == "## Captain'\''s intent" { emit=1; next } emit && /^## / { exit } emit { print }' "$brief")
-  spec_body=$(awk '$0 == "## Firstmate spec" { emit=1; next } emit && /^# / { exit } emit { print }' "$brief")
+  intent_body=$(awk '$0 == "## PI'\''s intent" { emit=1; next } emit && /^## / { exit } emit { print }' "$brief")
+  spec_body=$(awk '$0 == "## Lab manager spec" { emit=1; next } emit && /^# / { exit } emit { print }' "$brief")
   assert_contains "$intent_body" "Investigate the fold's session-floor refusal." \
     "legacy promotion discarded provenance-marked captain words"
   assert_contains "$intent_body" "Preserve the existing successful session behavior." \
@@ -974,7 +974,7 @@ EOF
     [ "$status" -ne 0 ] || fail "$marker: addressed intent should be refused"
     assert_contains "$out" "operator-address line:   $marker preserve its provenance." \
       "$marker: refusal did not name the offending line"
-    assert_contains "$out" "write the captain's actual words without a Captain label or address" \
+    assert_contains "$out" "write the PI's actual words without a PI or Captain label or address" \
       "$marker: refusal did not say what to write instead"
     assert_absent "$home/data/$id/launch-brief.md" "$marker: addressed intent was serialized"
     assert_absent "$home/state/$id.meta" "$marker: addressed intent spawn wrote task metadata"
@@ -1041,9 +1041,9 @@ EOF
       first_line=$(sed -n '1p' "$brief")
       [ "$first_line" = '# Current worker role contract' ] ||
         fail "$project_kind $kind did not put worker identity first"
-      assert_grep 'follow this brief instead of that supervisor contract' "$brief" "$project_kind $kind omitted worker authority"
+      assert_grep 'follow this assignment instead of that supervisor contract' "$brief" "$project_kind $kind omitted worker authority"
       assert_grep "$home/state/$id.inbox" "$brief" "$project_kind $kind omitted its exact steering inbox"
-      assert_grep 'When this task works on Firstmate itself' "$brief" "$project_kind $kind made the exception unconditional"
+      assert_grep 'When this task works on Labmate itself' "$brief" "$project_kind $kind made the exception unconditional"
       assert_grep 'Project instructions still govern the work wherever they do not conflict with this worker identity' "$brief" "$project_kind $kind displaced project guidance"
       ! grep -q '^This section supersedes every earlier brief instruction about your role' "$brief" ||
         fail "$project_kind $kind revoked the brief's own role for a task that is not Firstmate"
@@ -1052,8 +1052,8 @@ EOF
       [ "$(cat "$proj/CLAUDE.md")" = '@AGENTS.md' ] || fail "spawn changed the project import"
     done
   done
-  role_line=$(grep -n 'A ship or scout worker launched by Firstmate into a worktree of this repository' "$ROOT/AGENTS.md" | cut -d: -f1)
-  supervisor_line=$(grep -n '^You are the first mate\.$' "$ROOT/AGENTS.md" | head -1 | cut -d: -f1)
+  role_line=$(grep -n 'A lab member launched into a task.s isolated copy' "$ROOT/AGENTS.md" | cut -d: -f1)
+  supervisor_line=$(grep -n '^You are the lab manager\.$' "$ROOT/AGENTS.md" | head -1 | cut -d: -f1)
   [ -n "$role_line" ] && [ "$role_line" -lt "$supervisor_line" ] ||
     fail "Firstmate AGENTS.md does not disambiguate a launched worker before assigning the supervisor identity"
   cmp -s "$ROOT/AGENTS.md" "$home/AGENTS.md" || fail "worker spawn changed the primary contract"
@@ -1306,7 +1306,7 @@ test_forge_gerrit_changes_what_no_mistakes_means() {
   # The forge changes the contract's head and tail only: how the pipeline is
   # driven, what --intent may carry, and the two firstmate-specific rules are the
   # same text a GitHub-forge worker receives.
-  assert_grep 'ask-user findings are never yours to answer: escalate to firstmate' "$brief" \
+  assert_grep 'ask-user findings are never yours to answer: escalate to the lab manager' "$brief" \
     "the gerrit worker lost the ask-user escalation rule"
   # shellcheck disable=SC2016 # Backticks are literal generated Markdown.
   assert_grep 'NEVER pass `--yes` (or `-y`)' "$brief" "the gerrit worker lost the --yes ban"
@@ -1358,7 +1358,7 @@ EOF
     "the refusal named the generated launch brief instead of the authored one"
   assert_contains "$out" "fm-brief.sh forge-agree-a1 proj --mode no-mistakes --forge gerrit" \
     "the refusal did not print a re-scaffold command that can actually run"
-  assert_contains "$out" "Captain's intent" \
+  assert_contains "$out" "## PI's intent" \
     "the refusal did not say to preserve the filled subsections the re-scaffold discards"
   assert_absent "$home/state/forge-agree-a1.meta" "the refused spawn still recorded a task"
 
