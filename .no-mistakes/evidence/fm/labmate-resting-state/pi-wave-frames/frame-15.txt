@@ -1,0 +1,44 @@
+ E2E_PROMPT
+
+
+ Operation
+ aborted
+
+
+ CALM_BOAT_
+ E2E_PROMPT
+
+
+ Operation
+ aborted
+
+ Tool
+ output:
+ expanded
+
+
+ CALM_WORKI
+ NG_E2E_PRO
+ MPT
+
+
+ CALM_WORKI
+ NG_E2E_RES
+ PONSE
+
+ Tool
+ output:
+ expanded
+
+
+ CALM_BOAT_
+ E2E_PROMPT
+
+
+⢤⣀
+ ⠈⠉⠓⠲⠤⠤⠴⠒⠒⠚⠉
+────────────
+
+────────────
+/private/...
+↑7 ↓4 43....

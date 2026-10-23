@@ -1,0 +1,7 @@
+FM_TEST_BEGIN 2026-10-23T19:59:21Z tests/fm-calm-claude-mod-plugin.test.sh family=live-harness-optin expected_gate_skip=live-capability
+ok - Claude Code 2.1.309 (Claude Code) validates the Calm mod strictly at its folder and its auto-load path, hooking exactly the working row, tool, user, and assistant drawings and /calm, and logging supervision notes
+ok - Claude Code 2.1.309 (Claude Code) runs the Calm mod's plugin test suites clean: persisted toggle, hidden rows, working notes, the clock-driven working ship, and supervision notes
+FM_TEST_END 2026-10-23T19:59:26Z tests/fm-calm-claude-mod-plugin.test.sh exit=0 duration_ms=4490 gate_skip=false
+FM_TEST_SUMMARY total=1 failed=0 skipped_gate=0 duration_ms=4778
+FM_TEST_SUMMARY_FAMILY family=live-harness-optin count=1 duration_ms=4490 failed=0
+FM_TEST_SLOWEST rank=1 script=tests/fm-calm-claude-mod-plugin.test.sh duration_ms=4490

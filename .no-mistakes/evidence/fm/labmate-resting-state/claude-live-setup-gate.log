@@ -1,0 +1,38 @@
+$ FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PREPARE=1 tests/fm-calm-claude-mod-live-e2e.test.sh  # as documented
+(eval):1: permission denied: tests/fm-calm-claude-mod-live-e2e.test.sh
+exit=126
+
+$ FM_CLAUDE_CALM_LIVE_E2E=1 bash tests/fm-calm-claude-mod-live-e2e.test.sh   # no fixture
+not ok - setup required: FM_CLAUDE_CALM_LIVE_PROJECT names no operator-approved fixture
+# approve the isolated fixture: cd /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved && claude, accept its folder-trust prompt yourself, /exit
+# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+exit=1
+
+$ ... FM_CLAUDE_CALM_LIVE_PROJECT=$PWD (gate worktree)
+not ok - setup required: /Users/lobennett/.no-mistakes/worktrees/cb0af3973d56/01M5N4BE6X274C3X4E0EB7ZP7Q is not the prepared isolated fixture /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+# approve the isolated fixture: cd /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved && claude, accept its folder-trust prompt yourself, /exit
+# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+exit=1
+
+$ ... FM_CLAUDE_CALM_LIVE_PROJECT=$HOME
+not ok - setup required: /Users/lobennett is not the prepared isolated fixture /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+# approve the isolated fixture: cd /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved && claude, accept its folder-trust prompt yourself, /exit
+# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+exit=1
+
+$ FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PREPARE=1 bash tests/fm-calm-claude-mod-live-e2e.test.sh
+not ok - setup required: prepared /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved; native proof remains unverified until the operator approves it
+# approve the isolated fixture: cd /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved && claude, accept its folder-trust prompt yourself, /exit
+# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+exit=1
+
+$ bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh (opt-in, prepared but unapproved fixture path)
+fixture=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+FM_TEST_BEGIN 2026-10-23T20:00:17Z tests/fm-calm-claude-mod-live-e2e.test.sh family=live-harness-optin expected_gate_skip=live-capability
+not ok - setup required: FM_CLAUDE_CALM_LIVE_PROJECT names no operator-approved fixture
+# approve the isolated fixture: cd /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved && claude, accept its folder-trust prompt yourself, /exit
+# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-calm-claude-live-approved
+FM_TEST_END 2026-10-23T20:00:18Z tests/fm-calm-claude-mod-live-e2e.test.sh exit=1 duration_ms=441 gate_skip=false
+FM_TEST_SUMMARY total=1 failed=1 skipped_gate=0 duration_ms=758
+FM_TEST_SUMMARY_FAMILY family=live-harness-optin count=1 duration_ms=441 failed=1
+exit=0
