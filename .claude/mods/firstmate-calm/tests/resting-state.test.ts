@@ -64,7 +64,33 @@ describe("Resting State", () => {
     });
   }
 
-  test("does not change live choice on failed persistence or invalid input", async ($, on) => {
+  test("follows a live reduced-motion change: stops wave motion while on and resumes from the shown frame when off", async ($, on) => {
+    const { clock, journal } = world(on, { preference: "on\n", presentation: "resting-state\n" });
+    const reduce = (value: boolean) => $.config.set({
+      key: "prefersReducedMotion",
+      value,
+      previous: !value,
+      provider: { plugin: "engine", tier: "core" as const },
+      origin: { kind: "composer" as const },
+    });
+    await $.ui.render(spinner());
+    await clock.advance(220 * 4);
+    expect(journal.blits.length).toBeGreaterThan(0);
+    const shown = decodeCells(journal.blits.at(-1)!.cells, 38, 2).glyphs;
+    await reduce(true);
+    const frozen = journal.blits.length;
+    await clock.advance(220 * 40);
+    expect(journal.blits.length).toBe(frozen);
+    expect(glyphs(await $.ui.render(spinner()))).toEqual(shown);
+    await clock.advance(220 * 40);
+    expect(journal.blits.length).toBe(frozen);
+    await reduce(false);
+    expect(glyphs(await $.ui.render(spinner()))).toEqual(shown);
+    await clock.advance(220 * 4);
+    expect(journal.blits.length).toBeGreaterThan(frozen);
+  });
+
+  test("does not change live choice on failed persistence or invalid input",async ($, on) => {
     const { failWrites, files } = world(on, { preference: "on\n" });
     expect(glyphs(await $.ui.render(spinner()))[1]).toContain("╲▁▁▁╱");
     failWrites("read-only");

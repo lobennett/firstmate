@@ -30,18 +30,24 @@ FM_TEST_SUMMARY total=5 failed=0 skipped_gate=0 duration_ms=82853
 
 Claude Code strictly validated the module from both its physical and auto-load paths and passed its engine-executed plugin suites, including explicit command selection, failed writes, reduced motion, palette, hidden-motion freeze, and exact default-off function-hooks behavior.
 Native Claude TUI proof is **unverified**, not a passing test: the auto-permission-mode live test stopped at the workspace-trust dialog, without accepting it or changing global settings.
-The missing operator step is explicit trust confirmation for the isolated test project before native drawing can be observed; the guard refuses to make that security decision itself.
-The opt-in native entry point is:
+The missing operator step is explicit trust approval of one named isolated fixture folder; the guard never makes that security decision itself and never answers a trust dialog.
+The fixture lives under the test temp directory, outside this repository, any git work tree, and the live Firstmate home, and the guard refuses any other path.
+Prepare it, approve it yourself in Claude Code, then run the guard against it:
 
 ```sh
-FM_CLAUDE_CALM_LIVE_E2E=1 bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh
+FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PREPARE=1 tests/fm-calm-claude-mod-live-e2e.test.sh
+# prints the fixture path, e.g. "$TMPDIR/fm-calm-claude-live-approved", and reports setup required
+cd "<printed path>" && claude   # review and accept the folder-trust prompt, then /exit
+FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT="<printed path>" bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh
 ```
 
-Exact refusal:
+Without an approved fixture, or if Claude Code still shows a confirmation dialog there, the guard fails as setup required rather than passing or skipping:
 
 ```text
-not ok - Claude Code 2.1.309 (Claude Code) requires operator confirmation before the live renderer proof; no dialog was accepted
+not ok - setup required: FM_CLAUDE_CALM_LIVE_PROJECT names no operator-approved fixture
 ```
+
+The approved run covers both the legacy Calm boat assertions and the Resting State wave assertions in the real Claude Code TUI.
 
 ## Polytoken worker lifecycle
 

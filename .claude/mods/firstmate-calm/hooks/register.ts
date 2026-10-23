@@ -242,6 +242,7 @@ async function repaintShip($: EngineInterface): Promise<void> {
   if (!calm || sites.size === 0) { stopTicker(); return; }
   if (presentation === "resting-state") wave.tick();
   else sprite.tick();
+  let shown = false;
   for (const [requestId, site] of sites) {
     const packed = packCalmShipRasterCells(workingFrame(site.columns, false), site.columns, workingPalette());
     const result = await $.ui.blit({
@@ -254,8 +255,9 @@ async function repaintShip($: EngineInterface): Promise<void> {
     // A denied blit means the site no longer shows this plugin's Raster (the turn
     // settled, or a resize redrew it); forget it until the next Spinner drawing.
     if (result.deny !== undefined && sites.get(requestId) === site) sites.delete(requestId);
-    else if (result.deny === undefined && presentation === "resting-state") wave.frame(site.columns);
+    else if (result.deny === undefined) shown = true;
   }
+  if (shown && presentation === "resting-state") wave.markRendered();
   if (sites.size === 0) {
     wave.restoreLastRendered();
     stopTicker();

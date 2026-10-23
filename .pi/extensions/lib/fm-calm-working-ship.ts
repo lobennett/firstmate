@@ -79,7 +79,7 @@ export function createCalmWorkingShipAnimation(
     reset: () => { sprite.reset(); wave.reset(); },
     clampToWidth: sprite.clampToWidth,
     tick: () => { if (presentation() === "resting-state") wave.tick(); else sprite.tick(); },
-    render(width: number, paintWave = (text: string) => `\u001b[38;5;66m${text}${RESET}`): string[] {
+    render(width: number, paintWave = (text: string) => paintRun({ text, color: "water" })): string[] {
       if (presentation() === "resting-state") {
         return wave.frame(width).map((row) => row.map((run) =>
           run.color === "plain" ? run.text : paintWave(run.text)).join(""));

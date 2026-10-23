@@ -53,6 +53,7 @@ export function createRestingStateWave() {
     tick(): void { phase = (phase + 1) % 160; },
     reset(): void { phase = 0; renderedPhase = 0; },
     restoreLastRendered(): void { phase = renderedPhase; },
+    markRendered(): void { renderedPhase = phase; },
     frame(width: number, remember = true): CalmWorkingShipFrame {
       const columns = Math.max(0, Math.floor(width));
       if (columns === 0) return [];

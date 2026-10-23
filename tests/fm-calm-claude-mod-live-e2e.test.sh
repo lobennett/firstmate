@@ -17,10 +17,19 @@
 #      note, each drawn behind the plugin's `fm:` label rather than `firstmate-calm:`,
 #      without moving a store marker or reaching the model, and a resume shows each
 #      anchor once.
-# The project and FM_HOME are isolated; Claude keeps using its existing managed
-# authentication and auto permission mode. Workspace trust requires explicit operator
-# confirmation: the test refuses the dialog rather than accepting it. A few Haiku turns
-# are submitted only when the session can start without a security confirmation.
+# FM_HOME is a fresh lab; Claude keeps using its existing managed authentication and
+# auto permission mode. Workspace trust belongs to the operator: the test never answers
+# a trust dialog. It runs in one named isolated fixture folder the operator has opened
+# and approved in Claude Code themselves:
+#   1. Prepare: FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PREPARE=1 \
+#        tests/fm-calm-claude-mod-live-e2e.test.sh
+#      creates the empty fixture folder and prints its path; it reports setup required.
+#   2. Approve: cd into that folder, run `claude`, review and accept its folder-trust
+#      prompt yourself, then /exit.
+#   3. Run: FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT=<that path> \
+#        bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh
+# Without an approved fixture the run fails as setup required, never passes or skips.
+# A few Haiku turns are submitted only when the session starts without a dialog.
 # shellcheck disable=SC2016 # the model, not this test shell, reads the prompt text
 set -u
 
@@ -33,8 +42,28 @@ MOD="$ROOT/.claude/mods/firstmate-calm"
 OPERATIONAL_INPUT="$ROOT/bin/fm-operational-input.sh"
 CLAUDE_VERSION=$(claude --version 2>/dev/null || true)
 [ -n "$CLAUDE_VERSION" ] || fail "claude is installed but reports no version"
+FIXTURE_MARKER=.fm-calm-claude-live-fixture
+FIXTURE="$(fm_test_tmpdir)/fm-calm-claude-live-approved"
+setup_required() {  # <reason>
+  printf 'not ok - setup required: %s\n' "$1" >&2
+  printf '# approve the isolated fixture: cd %q && claude, accept its folder-trust prompt yourself, /exit\n' "$FIXTURE" >&2
+  printf '# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=%q\n' "$FIXTURE" >&2
+  exit 1
+}
+if [ "${FM_CLAUDE_CALM_LIVE_PREPARE:-}" = 1 ]; then
+  mkdir -p "$FIXTURE" && : >"$FIXTURE/$FIXTURE_MARKER" || fail "could not prepare $FIXTURE"
+  setup_required "prepared $FIXTURE; native proof remains unverified until the operator approves it"
+fi
+[ -n "${FM_CLAUDE_CALM_LIVE_PROJECT:-}" ] \
+  || setup_required "FM_CLAUDE_CALM_LIVE_PROJECT names no operator-approved fixture"
+PROJECT=$(cd -P -- "$FM_CLAUDE_CALM_LIVE_PROJECT" 2>/dev/null && pwd -P) \
+  || setup_required "$FM_CLAUDE_CALM_LIVE_PROJECT does not exist"
+[ "$PROJECT" = "$FIXTURE" ] && [ -f "$PROJECT/$FIXTURE_MARKER" ] \
+  || setup_required "$FM_CLAUDE_CALM_LIVE_PROJECT is not the prepared isolated fixture $FIXTURE"
+if git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  setup_required "$PROJECT is inside a git work tree, not an isolated fixture"
+fi
 LAB=$(fm_test_tmproot fm-calm-claude-live)
-PROJECT="$LAB/project"
 FM_HOME_DIR="$LAB/fmhome"
 DEBUG_LOG_OFF="$LAB/debug-off.log"
 DEBUG_LOG_ON="$LAB/debug-on.log"
@@ -58,7 +87,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$PROJECT/.claude/skills" "$FM_HOME_DIR/config"
-ln -s "$MOD" "$PROJECT/.claude/skills/firstmate-calm"
+ln -sfn "$MOD" "$PROJECT/.claude/skills/firstmate-calm"
 printf 'alpha\nbeta\ngamma\n' >"$PROJECT/notes.txt"
 printf 'on\n' >"$FM_HOME_DIR/config/calm"
 
@@ -119,7 +148,7 @@ wait_screen() {  # <text> <what> [iterations]
     esac
     if dialog_open "$shot"; then
       printf '%s\n' "$shot" >&2
-      fail "Claude Code $CLAUDE_VERSION requires operator confirmation before the live renderer proof; no dialog was accepted"
+      setup_required "Claude Code $CLAUDE_VERSION still asks for confirmation in $PROJECT; no dialog was accepted"
     else
       case "$shot" in
         *"$text"*) return 0 ;;
@@ -511,7 +540,9 @@ sleep 2
 send '/exit'
 enter
 sleep 2
-notes_session=$(grep -rlF 'GREEN_HARBOR_LANTERN' "$HOME/.claude/projects/"*"$(basename "$LAB" | tr -c 'A-Za-z0-9\n' -)"* 2>/dev/null | head -n 1)
+# The approved fixture keeps earlier runs' transcripts, so only the newest one counts.
+notes_session=$(ls -t "$HOME/.claude/projects/"*"$(basename "$PROJECT" | tr -c 'A-Za-z0-9\n' -)"*/*.jsonl 2>/dev/null | head -n 1)
+grep -qF 'GREEN_HARBOR_LANTERN' "$notes_session" 2>/dev/null || notes_session=
 [ -n "$notes_session" ] || fail "could not find the session transcript Claude Code stored for the notes turn"
 if jq -e 'select(.type == "assistant") | .message.content | tostring | test("LIVE_")' "$notes_session" >/dev/null 2>&1; then
   fail "the model quoted a supervision note, so the notes reached its context: $notes_session"
