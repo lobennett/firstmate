@@ -313,7 +313,8 @@ Queued-row coverage drives Pi's real listing and restore methods over a stand-in
 [`tests/fm-pi-primary-types.test.sh`](../tests/fm-pi-primary-types.test.sh) owns the strict production-consumer typecheck and its dependency contract.
 `tests/fm-calm-claude-mod.test.sh` needs no Claude Code binary: it proves the mod is one hooks module with no command, skill, agent, or classic hook path around its opt-in, that Pi's working ship renders byte-for-byte the shared sprite core painted in ANSI at every width and step, that the Raster packing lays that frame out exactly, that the mod resolves its home like Pi, that its live and restored working-note classifiers enforce the visibility boundaries [`calm.md`](calm.md#claude-code) owns, and that its operational-input classifier agrees with `bin/fm-operational-input.sh` on a corpus the shell owner itself encodes plus legacy shapes and near misses.
 `tests/fm-calm-claude-mod-plugin.test.sh` runs wherever `claude` is installed without spending a model turn: strict `claude plugin validate` on the folder and on the `.claude/skills` auto-load path, then the mod's own `claude plugin test` suites, which drive the hooks module in the engine's host against a mocked clock, environment, file system, and drawing surface.
-`tests/fm-calm-claude-mod-live-e2e.test.sh` is the opt-in credentialed guard in a real Claude Code TUI under tmux: flag off is a complete no-op with the preference already on, flag on shows the moving boat, hides tool and operational rows, toggles and persists through `/calm`, and `claude --continue` restores the hidden rows.
+`tests/fm-calm-claude-mod-live-e2e.test.sh` is the opt-in credentialed guard in a real Claude Code TUI under tmux: flag off is a complete no-op with the preference already on, flag on shows the moving boat, hides tool and operational rows, toggles and persists through `/calm`, `claude --continue` restores the hidden rows, and the Resting State wave draws through `/resting-state`.
+It runs only against an operator-approved isolated fixture, following [the prepare, approve, and run procedure](verification/runtime-backends.md#resting-state-working-presentation); without one it fails as setup required.
 
 The relevant commands are:
 
@@ -325,7 +326,7 @@ tests/fm-pi-primary-types.test.sh
 tests/fm-calm-pi-queue-retention-live-e2e.test.sh
 tests/fm-calm-claude-mod.test.sh
 tests/fm-calm-claude-mod-plugin.test.sh
-FM_CLAUDE_CALM_LIVE_E2E=1 tests/fm-calm-claude-mod-live-e2e.test.sh
+FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT=<approved fixture> tests/fm-calm-claude-mod-live-e2e.test.sh
 ```
 
 ## 2026-07-23 verification record

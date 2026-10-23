@@ -350,5 +350,7 @@ Evidence for 2.1.280 and the record-backed doorbell is also in its [2026-09-25 r
 ```sh
 tests/fm-calm-claude-mod.test.sh
 tests/fm-calm-claude-mod-plugin.test.sh
-FM_CLAUDE_CALM_LIVE_E2E=1 tests/fm-calm-claude-mod-live-e2e.test.sh
+FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT=<approved fixture> tests/fm-calm-claude-mod-live-e2e.test.sh
 ```
+
+The live guard runs only against an operator-approved isolated fixture; [its prepare, approve, and run procedure](verification/runtime-backends.md#resting-state-working-presentation) owns that setup.
