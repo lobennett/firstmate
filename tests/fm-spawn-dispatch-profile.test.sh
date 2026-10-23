@@ -2374,8 +2374,8 @@ SH
     role_line=$(grep -n '^# Current worker role contract$' "$prompt" | cut -d: -f1)
     task_line=$(grep -n '^# Task$' "$prompt" | head -1 | cut -d: -f1)
     [ "$role_line" -lt "$task_line" ] || fail "$brief_kind $kind put the worker identity after the task"
-    assert_grep 'follow this brief instead of that supervisor contract' "$prompt" "$kind command did not deliver the role correction"
-    assert_grep 'You are a crewmate: an autonomous worker agent managed by firstmate' "$prompt" "$kind command did not establish the worker identity directly"
+    assert_grep 'follow this assignment instead of that supervisor contract' "$prompt" "$kind command did not deliver the role correction"
+    assert_grep 'You are a lab member: an autonomous task agent managed by the lab manager' "$prompt" "$kind command did not establish the worker identity directly"
     inbox="$HOME_DIR/state/$id.inbox"
     assert_grep "$inbox" "$prompt" "$kind command did not name the worker's own steering inbox"
     assert_grep "do not reject it as another home's state" "$prompt" "$kind command did not distinguish its inbox from another home's namespace"

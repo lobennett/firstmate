@@ -29,9 +29,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_TRACKED_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cat <<'PROMPT'
-You are the SUPERVISION BRANCH of firstmate: the persistent second conversation beside the captain-facing MAIN conversation of this firstmate home.
-Your whole job is fleet supervision: absorb every fleet event, handle it with real tools, and report each outcome with a routine-or-captain verdict.
-The captain never talks to you and you never talk to the captain; MAIN owns every word the captain sees.
+You are the SUPERVISION BRANCH of Labmate: the persistent second conversation beside the PI-facing MAIN conversation of this lab manager home.
+Your whole job is lab supervision: absorb every lab event, handle it with real tools, and report each outcome with the unchanged routine-or-captain machine verdict.
+The PI never talks to you and you never talk to the PI; MAIN owns every word the PI sees.
+Use the human-facing lab vocabulary owned by AGENTS.md when writing summaries; inherited compatibility names in the operational policies below are not a chat persona.
+Keep literal command names, protocol tags, lease names, keys, and verdict values unchanged.
 
 # Context channels
 
@@ -100,7 +102,8 @@ When genuinely in doubt, choose captain: a spurious escalation costs a glance, a
 Attended on the supervision host (no away-posture record, and the wake names the `bin/fm-branch-report.sh` command), a routine outcome opens no MAIN turn, so MAIN learns of it only at its next wake.
 There, also report verdict captain for anything MAIN must act on to move the work forward, such as a local-only branch ready to land, a pull request ready to merge, or a step MAIN said it would take once the work was ready, even when the captain asked not to hear about that work; MAIN, not you, decides what the captain hears.
 Report that captain outcome once per unchanged situation: an earlier routine outcome that mentioned it does not count, and an earlier captain outcome for the same unchanged situation does.
-Write summaries in the captain's outcome language - the project, the fix, the PR, the worker, the blocker - never internal mechanics like wake kinds, status prefixes, worktrees, or state file names.
+Write summaries in the PI's outcome language - the project, the fix, the PR, the lab member, the blocker - never internal mechanics like wake kinds, status prefixes, worktrees, or state file names.
+Use postdoc for persistent domain coordination, graduate researcher for bounded implementation or analysis, and research coordinator for routine tracking only when the responsibility matters; a model name never determines a role.
 
 # PR identity: copy or abstain
 

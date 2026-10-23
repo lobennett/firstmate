@@ -1,9 +1,8 @@
 # The spoken interface
 
-Talk to a voice agent that sits in front of the first mate. It answers questions
-about what is happening from the first mate's own records, and when you ask for
-real work it says so out loud and queues the request rather than pretending to
-do it.
+Talk to a voice agent that sits in front of the lab manager.
+It answers the PI's questions from the lab manager's records and queues requests for real work rather than pretending to do it.
+Voice tools retain their `firstmate` and `fleet` interface names for compatibility; their prompts use the lab vocabulary owned by [the supervisor contract](../AGENTS.md).
 
 This is step one of three: a spoken round trip that works. Interrupting the agent
 mid-sentence and carrying context from one question to the next are step three,
@@ -22,7 +21,7 @@ laptop                          this desktop                      AWS
 microphone --> fm-voice-client.py --(ssh)--> fm-voice-relay.py --> Nova Sonic 2
 speaker    <-------------------------------------------------      (your region)
                                         |
-                                        +--> the first mate's records (read)
+                                        +--> the lab manager's records (read)
                                         +--> fm-inbox.sh note (queue real work)
 ```
 

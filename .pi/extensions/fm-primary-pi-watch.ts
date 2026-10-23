@@ -1248,7 +1248,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand?.("fm-watch-arm-pi", {
-    description: "Arm firstmate watcher supervision through the Pi extension instead of foreground bash.",
+    description: "Arm Labmate supervision through the Pi extension instead of foreground bash.",
     handler: async (_args, ctx) => {
       const result = activateOwnedWatch(generation);
       ctx.ui.notify(result.message, result.ok ? "info" : "warning");
@@ -1257,7 +1257,7 @@ export default function (pi: ExtensionAPI) {
 
   registerFirstmateTool(pi, {
     name: "fm_watch_arm_pi",
-    label: "Arm firstmate watcher",
+    label: "Arm Labmate monitoring",
     description: "Start the first required Pi watcher cycle, or repair one only after a notification says the cycle is missing, failed, or unhealthy. Do not call after ordinary work or ordinary notifications; the Pi extension re-arms automatically. Never run bin/fm-watch-arm.sh through bash.",
     promptSnippet: "Start the first required Pi watcher cycle or repair a cycle reported missing, failed, or unhealthy; ordinary re-arming is automatic.",
     promptGuidelines: [

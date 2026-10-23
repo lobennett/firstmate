@@ -1916,7 +1916,7 @@ ${context.command}
   // and stays on Pi's generic selector dialog. The effort step follows the
   // model step because the model decides which levels exist.
   pi.registerCommand?.("supervision-model", {
-    description: "Pick the model and reasoning effort Firstmate's Pi supervision branch uses, or follow main's.",
+    description: "Pick the model and reasoning effort Labmate's Pi supervision branch uses, or follow main's.",
     handler: async (_args, ctx) => {
       rememberMainModel(ctx);
       const pin = readModelPin();
@@ -2282,7 +2282,7 @@ ${context.command}
     name: "fm_branch_outcomes",
     label: "Read supervision branch outcomes",
     description:
-      "Read the durable outcome store of the supervision branch: what fleet events it handled, each verdict, and each summary. Use when the captain asks what happened in the fleet.",
+      "Read the durable outcome store of the supervision branch: what lab events it handled, each verdict, and each summary. Use when the PI asks what happened in the lab.",
     promptSnippet: "Read what the supervision branch handled (durable outcome store).",
     parameters: Type.Object({
       recent: Type.Optional(Type.Number({ description: "How many most-recent outcomes to read (default 20)" })),

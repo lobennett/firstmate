@@ -347,7 +347,7 @@ if [ -z "${FM_SESSION_START_STAGE_FILE:-}" ]; then
     printf '●  only up to that point.\n'
     printf '●  RECONCILE these stages before acting on anything they would have shown:\n'
     printf '●    %s\n' "${SESSION_START_PENDING% }"
-    printf '●  Rerun bin/fm-session-start.sh now to finish taking the helm. If it truncates\n'
+    printf '●  Rerun bin/fm-session-start.sh now to finish lab startup. If it truncates\n'
     if [ "$SESSION_START_RC" -eq 124 ]; then
       printf '●  again, raise FM_SESSION_START_TIMEOUT and report the slow stage - a stage that\n'
       printf '●  cannot finish inside the bound is a fleet problem, not a reporting detail.\n'

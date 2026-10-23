@@ -3937,7 +3937,7 @@ def _status_sentence(result):
 def _queued_sentence(result):
     if result.get("error"):
         return "I could not queue that: {}".format(result["error"])
-    return ("That is queued with the first mate as {}. I have not done any of it "
+    return ("That is queued with the lab manager as {}. I have not done any of it "
             "myself.".format(result.get("note_id") or "a note"))
 
 
@@ -4087,7 +4087,7 @@ class _Stream:
         self.record["heard"] = heard
         self._emit({"textOutput": {"role": "USER", "content": heard}})
         if self.kind == "handover":
-            self._say("I am not the first mate, so I am handing that to it.")
+            self._say("I am not the lab manager, so I am handing that to it.")
             result = await self._call_tool("hand_over_to_firstmate",
                                            {"request": REQUEST})
             self._say(_queued_sentence(result))
@@ -4345,8 +4345,8 @@ check(runs[1]["queued_note"] == note_id,
       % (runs[1]["queued_note"], note_id))
 check(note_id in " ".join(handover["said"]),
       "the agent did not confirm the queued note: %r" % handover["said"])
-check("handed to the first mate" in transcript,
-      "the captain was never told it was handed over: %r" % transcript)
+check("handed to the lab manager" in transcript,
+      "the PI was never told it was handed over: %r" % transcript)
 note = os.path.join(root, "home", "state", "inbox", note_id + ".note")
 check(os.path.exists(note), "no note on disk at %s" % note)
 check(request in open(note, encoding="utf-8").read(),

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bearings - fleet board</title>
+<title>Labmate - lab overview</title>
 <style>
 /* ============================================================
    Bearings board - Firstmate Design System, inlined for portability.
@@ -284,10 +284,10 @@ a { color: inherit; text-decoration: none; }
     <span class="bb-brand">
       <span class="bb-brand__disc">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 6v16"/><path d="m19 13 2-1a9 9 0 0 1-18 0l2 1"/><path d="M9 11h6"/><circle cx="12" cy="4" r="2"/>
+          <path d="M9 3h6M10 3v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3M8 14h8"/>
         </svg>
       </span>
-      <span class="bb-brand__wm">bearings</span>
+      <span class="bb-brand__wm">Labmate · lab overview</span>
     </span>
   </div>
 </header>
@@ -301,7 +301,7 @@ a { color: inherit; text-decoration: none; }
     <div class="bb-section__head">
       <span class="fm-sign fm-sign--eyebrow">
         <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
-        Captain's Call
+        PI decisions
       </span>
       <span class="fm-sign fm-sign--muted" id="bb-call-sub"></span>
     </div>
@@ -325,7 +325,7 @@ a { color: inherit; text-decoration: none; }
     <div class="bb-section__head">
       <span class="fm-sign fm-sign--eyebrow">
         <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-        Charted Next
+        Research agenda
       </span>
       <span class="fm-sign fm-sign--muted" id="bb-charted-sub"></span>
     </div>
@@ -347,8 +347,8 @@ a { color: inherit; text-decoration: none; }
     <section class="bb-section">
       <div class="bb-section__head">
         <span class="fm-sign fm-sign--eyebrow">
-          <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10.189V14"/><path d="M12 2v3"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76"/><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1s1.2 1 2.5 1c2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
-          Underway
+          <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8M9 3v7l-5 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-5-9V3M7 15h10"/></svg>
+          Active research
         </span>
       </div>
       <div class="fm-card"><div class="bb-rows" id="bb-underway"></div></div>
@@ -358,7 +358,7 @@ a { color: inherit; text-decoration: none; }
       <div class="bb-section__head">
         <span class="fm-sign fm-sign--eyebrow">
           <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
-          Recently Landed
+          Recent results
         </span>
       </div>
       <div class="fm-card"><div class="bb-rows" id="bb-landed"></div></div>
@@ -460,10 +460,10 @@ __FM_BEARINGS_BOARD_DATA__
   /* stat strip */
   var callTotal = data.captains_call.length;
   var stats = [
-    { n: callTotal, l: "need you", call: true },
-    { n: data.underway.length, l: "underway" },
-    { n: data.landed.length, l: "landed recently" },
-    { n: chartedQueued(data.charted).length + chartedMoreQueued, l: "charted next" }
+    { n: callTotal, l: "PI decisions", call: true },
+    { n: data.underway.length, l: "active research" },
+    { n: data.landed.length, l: "recent results" },
+    { n: chartedQueued(data.charted).length + chartedMoreQueued, l: "research agenda" }
   ];
   var strip = document.getElementById("bb-stats");
   stats.forEach(function (s) {
@@ -473,7 +473,7 @@ __FM_BEARINGS_BOARD_DATA__
     strip.appendChild(t);
   });
   document.getElementById("bb-call-sub").textContent =
-    callTotal ? callTotal + " item" + (callTotal === 1 ? "" : "s") + " wait on you, captain" : "nothing needs you, captain";
+    callTotal ? callTotal + " item" + (callTotal === 1 ? "" : "s") + " need a PI decision" : "no PI decisions needed";
 
   /* Captain's Call deck: every item renders as the same full card */
   var deck = document.getElementById("bb-call");
@@ -577,7 +577,7 @@ __FM_BEARINGS_BOARD_DATA__
         };
         if (item.close) ctxData.close = item.close;
         window.lavish.queuePrompt(
-          "Captain's Call answer - " + item.title + ": " + displayAnswer,
+          "PI decision answer - " + item.title + ": " + displayAnswer,
           { tag: "choice", text: item.title + " -> " + displayAnswer, element: form,
             data: ctxData }
         );
@@ -623,7 +623,7 @@ __FM_BEARINGS_BOARD_DATA__
 
   /* Underway */
   var uw = document.getElementById("bb-underway");
-  if (!data.underway.length) uw.appendChild(el("div", "bb-empty", "Nothing is underway."));
+  if (!data.underway.length) uw.appendChild(el("div", "bb-empty", "No research is active."));
   data.underway.forEach(function (t) {
     var row = el("div", "bb-row");
     row.appendChild(badge(t.state === "working" ? "online" : "info", t.state));
@@ -634,7 +634,7 @@ __FM_BEARINGS_BOARD_DATA__
     /* captain-facing rows name the repo; the internal task id shows only when
        no repo is known */
     main.appendChild(el("div", "bb-row__sub",
-      t.doing + " · " + t.kind + " · " + (t.repo || t.id)));
+      t.doing + " · " + ({ secondmate: "postdoc", ship: "implementation", scout: "investigation" }[t.kind] || "lab member") + " · " + (t.repo || t.id)));
     row.appendChild(main);
     uw.appendChild(row);
   });
@@ -712,10 +712,10 @@ __FM_BEARINGS_BOARD_DATA__
   document.getElementById("bb-charted-sub").textContent =
     chartedMoreQueued ? "showing " + chartedShown + " of " + chartedTotal : "";
   if (chartedMoreQueued) {
-    ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreQueued + " more queued - ask firstmate for the full chart"));
+    ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreQueued + " more queued - ask the lab manager for the full agenda"));
   }
   if (chartedMoreWarnings) {
-    ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreWarnings + " more repair warning" + (chartedMoreWarnings === 1 ? "" : "s") + " - ask firstmate for the full chart"));
+    ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreWarnings + " more repair warning" + (chartedMoreWarnings === 1 ? "" : "s") + " - ask the lab manager for the full agenda"));
   }
 
   if (anyPickable) {

@@ -327,15 +327,16 @@ mkdir -p "$DATA/$ID"
 TMP="$DATA/$ID/.ship-instructions.md.${BASHPID:-$$}"
 {
   cat <<EOF
-Your scout task has been promoted to a ship task, mode=$MODE. Your window, worktree, and context stay as they are; only the contract below changes.
+Your investigation assignment is now authorized for implementation, mode=$MODE.
+Your window, worktree, and context stay as they are; only the contract below changes.
 
 # Task
-## Captain's intent
+## PI's intent
 EOF
   printf '%s\n' "$INTENT_BODY"
   cat <<EOF
 
-## Firstmate spec
+## Lab manager spec
 $PROMOTION_SHIP_SPEC
 
 EOF

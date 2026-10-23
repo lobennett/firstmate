@@ -117,7 +117,7 @@ render() {  # <home> <charted-json> [charted_more] [charted_warning_more]
 }
 
 charted_next_count() {  # <render-json>
-  printf '%s' "$1" | jq -r '.stats[] | select(.label == "charted next") | .n'
+  printf '%s' "$1" | jq -r '.stats[] | select(.label == "research agenda") | .n'
 }
 
 test_a_warning_row_reads_as_a_repair_not_as_queued_work() {
@@ -181,7 +181,7 @@ test_omitted_warnings_never_count_as_more_queued() {
     || fail "an omitted warning was counted as queued work: $out"
   printf '%s' "$out" | jq -e '
     (.empty | length) == 1 and (.empty[0] | test("Nothing is queued"))
-      and (.more == ["+1 more repair warning - ask firstmate for the full chart"])
+      and (.more == ["+1 more repair warning - ask the lab manager for the full agenda"])
       and ([.more[] | select(test("more queued"))] | length) == 0
   ' >/dev/null || fail "an omitted warning was labeled as more queued: $out"
   pass "omitted warnings remain separate from omitted queued work"
@@ -215,7 +215,7 @@ test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status() {
       and (.underway[0]
         | .title == "Show task names on the board"
           and (.sub | test("no-mistakes: review round 2"))
-          and (.sub | test("ship")) and (.sub | test("firstmate"))
+          and (.sub | test("implementation")) and (.sub | test("firstmate"))
           and [.badges[] | .text] == ["working"])
   ' >/dev/null || fail "an underway row did not lead with the task name: $out"
   pass "an underway row leads with the task name and still reports its run status"
@@ -232,7 +232,7 @@ test_an_underway_identifier_label_is_not_replaced_by_run_status() {
     (.underway | length) == 1
       and (.underway[0]
         | .title == "mate/child-1"
-          and (.sub | startswith("fixing the failing check · "))
+          and (.sub | startswith("fixing the failing check · postdoc · "))
           and (.title != "fixing the failing check"))
   ' >/dev/null || fail "an identifier-labelled underway row rendered as status-only: $out"
   pass "an underway identifier label is not replaced by run status"
@@ -266,6 +266,20 @@ test_charted_rows_without_a_filed_date_follow_the_dated_rows_in_payload_order() 
   pass "charted rows with no filed date follow the dated rows in payload order"
 }
 
+test_lab_labels_render_from_the_legacy_board_payload() {
+  local home out
+  home=$(make_home lab-labels)
+  # render_board deliberately uses the unchanged fm-bearings-board.v1 schema
+  # and captains_call/underway/landed/charted keys.
+  out=$(render_board "$home" '[]' '[]')
+  printf '%s' "$out" | jq -e '
+    .error == "" and [.stats[].label] ==
+      ["PI decisions", "active research", "recent results", "research agenda"]
+  ' >/dev/null || fail "legacy payload did not render the lab vocabulary: $out"
+  pass 'legacy board records render PI decisions, active research, results, and research agenda'
+}
+
+test_lab_labels_render_from_the_legacy_board_payload
 test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status
 test_an_underway_identifier_label_is_not_replaced_by_run_status
 test_charted_next_reads_newest_filed_first

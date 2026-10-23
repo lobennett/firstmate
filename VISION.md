@@ -1,78 +1,74 @@
 # Vision
 
-`firstmate` exists so that one person can run a crew of coding agents with the leverage of a team and the accountability of a single pair of hands.
-It aims to create an experience: a sense of peacefulness, confidence that everything is under control, and an ease of mind that nothing will fall through the cracks the moment the captain looks away.
-That experience is the experience of being a good captain who sails with a well-managed crew, with a first mate that carries out the captain's direction.
-It serves the captain: an individual operator whose ambitions outrun their attention, and it turns intent stated once into delegated, supervised, evidence-backed work across every project they care about.
-It empowers exactly one individual; collaboration between humans belongs to other systems.
-It owns exactly one thing: the layer between the captain's intent and the agents that carry it out.
+Labmate lets one person direct a research lab of agents with the leverage of a team and one accountable point of contact.
+The PI states intent once; the lab manager turns it into assigned, supervised, evidence-backed work.
+The aim is peace of mind: work continues reliably when the PI looks away, and decisions still reach them.
+Labmate serves one individual; collaboration between humans belongs to other systems.
+It owns the layer between that individual's intent and the agents carrying it out.
 
-## One captain, one interface
+## One PI, one interface
 
-Without a first mate, parallel agent sessions force constant context-switching: the captain juggles a long list of sessions, relearns what each one was about and what the right next step should be, and watches coding's focus, flow, and peace replaced by non-stop tab-juggling.
-Most harnesses and orchestrator apps make it easier to see those sessions and jump between them, but the context switch remains the captain's burden.
-The captain talks to the first mate and to nobody else; every worker reports through the first mate and never addresses the captain directly.
-Captain-facing language is outcomes, consequences, and decisions; the machinery that produced them stays below deck.
-An escalation exists for a decision only a human can make; progress, retries, and internal mechanics are never news.
-The interface must stay honest under load: batching and silence are presentation choices, and never hide a failure, a decision, or a risk.
-Peace of mind is the purpose of this interface, not a garnish on top of it.
-Presentation and convenience features that serve that experience are welcome when they compose with the workflows the captain already has: opt-in, and never in the way of the captaincy itself.
+The PI talks to the lab manager, not a collection of terminals.
+Lab members report through that manager rather than addressing the PI directly.
+Human-facing communication describes outcomes, consequences, and decisions, not orchestration mechanics.
+Progress, automatic retries, and unchanged monitoring are not news.
+Batching and silence must never conceal a failure, a decision, or a risk.
+Presentation features are optional and compose with existing workflows without changing authority or records.
 
-## Authority is explicit and never inferred
+## Authority is explicit
 
-The captain is the default authority for every gate; autonomy exists only as an explicit grant, never as a default, and new capability ships as an option to enable, never as behavior that assumes consent.
-The first mate reads projects but does not change them; project changes belong to workers in isolated copies, delivered through each project's selected path.
-The first mate stays free to command by never doing the work itself: even the smallest change is a worker's job, because trivial is a guess and command attention does not scale.
-Merging, discarding work, and anything destructive, irreversible, or security-sensitive require the captain's explicit word.
-Standing autonomy is scoped consent granted per project, exercised only within the captain's original request, and it never quietly widens.
-Evidence is never authorization: a diagnosis, a report, or a recommendation authorizes nothing by itself.
-Initiative beyond a stated request is legitimate only where the captain has committed a vision precise enough to adjudicate it, and even then only as an explicit opt-in.
-A current, explicit captain instruction outranks any standing rule the first mate wrote for itself, exactly as stated and no further.
+The PI is the default authority; autonomy requires an explicit, scoped grant.
+The lab manager reads projects and lab members change them in isolated copies, subject to the narrow exceptions in the supervisor contract.
+The manager preserves its attention for coordination by assigning project work rather than implementing it.
+Merges, discards, and destructive, irreversible, or security-sensitive actions retain their explicit approval requirements.
+A project's standing authorization never quietly widens the original request.
+A diagnosis, report, or recommendation is evidence, not implementation permission.
+Initiative beyond a request needs an adjudicable, explicitly opted-in mandate.
+A current concrete PI instruction overrides a conflicting manager-written standing rule only within its exact scope.
 
-## Scripts own the mechanics, agents own the judgment
+## Scripts own mechanics; agents own judgment
 
-Logic that can be exact lives in deterministic scripts; work that requires understanding lives in an agent; the two never mix.
-A rigid script must never adjudicate meaning, and intelligence must never be spent on what a script can do exactly and repeatably.
-Scripts stop safely and report when the world surprises them; agents read, interpret, and decide.
-Token efficiency is a first-class concern: every agent's context stays lean, and every task is achieved with the fewest tokens that do it well.
-The command structure stays flat: every layer between the captain's intent and the acting agent costs fidelity and tokens, so depth is capped, not grown.
-The always-loaded contract carries a stated ceiling of 9,000 words, and a change that would cross it must prune or move content behind a trigger before it lands.
+Deterministic logic belongs in scripts; understanding belongs in agents.
+Scripts stop safely and explain unexpected conditions instead of guessing meaning.
+Agent attention is not spent on what a script can do exactly and repeatedly.
+Context stays lean and work uses the fewest tokens that accomplish it well.
+The existing delegation depth stays bounded: role names are not an excuse to add another layer.
+The always-loaded contract stays within 9,000 words; additions that cross that ceiling must first prune or disclose conditional material.
 
 ## A restart is a non-event
 
-Everything that matters survives the death of any conversation: work in flight, promises made, decisions pending, and the captain's preferences live in durable records, never in chat memory.
-The fleet reconciles from disk and from live session state, so killing any session, including the first mate's own, loses nothing and surprises no one.
-Obligations are closed by records, not by recollection: a promised reply, an open decision, or a queued wake is retired only by the durable event that answers it.
-This durability is how the experience holds when attention leaves: confidence that everything is under control, and ease of mind that nothing falls through the cracks the moment the captain looks away.
+Assignments, the research agenda, promises, decisions, and PI preferences live in durable records.
+The lab reconciles from those records and live session inventory rather than conversation memory.
+An obligation closes only with the durable event answering it.
+A session ending, including the manager's own session, must not lose work or create surprise authority.
 
-## Delegation with a spine
+## Responsibility without model ranks
 
-Every task gets an explicit contract before it starts: what to build or learn, how it ships, and how much autonomy the worker has; the machinery refuses to guess.
-Ship work lands through the project's chosen delivery rigor; scout work leaves a standalone report; neither is allowed to blur into the other on its own.
-Workers are supervised, not trusted: independent validation, behavioral tests, and the configured merge authority stand between a worker's confidence and anything that lands.
-Unlanded work is never torn down; a refusal to discard is a finding, not an obstacle.
-A new task shape earns its way in only when existing primitives genuinely cannot compose to cover it; simplicity is a capability the fleet defends.
+The responsibility and priority vocabulary is owned by [the supervisor contract](AGENTS.md).
+Postdocs coordinate persistent domains, graduate researchers handle bounded implementation or analysis, and research coordinators handle routine operations.
+Tasks go directly to the appropriate role; this is not a serial delegation chain or permanent model hierarchy.
+Investigations leave standalone reports; implementation follows the selected delivery path.
+Every assignment states what to build or learn, how it is delivered, and what authority it carries.
+Validation, behavioral tests, and configured merge approval stand between confidence and delivery.
+Unlanded work is never discarded by cleanup; a refusal is evidence, not an obstacle to bypass.
+New task shapes are justified only when existing primitives cannot compose to meet the need.
 
-## The fleet outlives any vendor
+## The lab outlives any vendor
 
-The first mate is not another harness and not another orchestrator app.
-The experience it creates is a new way of working, orthogonal to which agent harness or session manager the captain already uses.
-It is an agent distro, not an app: instructions, skills, scripts, and state conventions that any verified harness can inhabit - Claude Code, Codex, Pi, and others - and that run across session managers such as tmux, Herdr, and Orca.
-The first mate can read, understand, and evolve every part of itself: plain instructions, scripts, and text records keep the whole system introspectable, hot-modifiable, and self-evolving by the very agent that runs it.
-When something is not working well, the captain can ask the first mate and it figures it out; captains using their own firstmate to improve the shared surface is how the fleet evolves in the open.
-Harness adapters earn trust through verification, and the fleet keeps sailing when any one vendor's tool degrades.
-Contracts bind to semantics a vendor actually exposes.
-Where a vendor exposes none, the fleet may read the rendered surface, but only as a named, quarantined, version-pinned adapter that carries its own verification and is expected to break on that vendor's next release.
-Such a reading is a standing debt, recorded as one, and never hardens into a shared contract.
-Quota, model, and effort choices stay inspectable and captain-owned; the first mate never downgrades the intelligence doing the work without the captain's standing, explicit permission.
+Labmate is an agent distribution, not another runtime or session-manager application.
+Its instructions, scripts, skills, and text records remain inspectable and maintainable across verified runtimes and session backends.
+Adapters earn trust through verification against the semantics their vendor actually exposes.
+Rendered-surface dependencies remain quarantined, version-scoped verification debts rather than universal contracts.
+Quota, model, and reasoning choices remain inspectable and PI-owned.
+A role label never silently lowers reasoning quality or changes an account pin.
 
 ## Scope
 
-firstmate is the command layer, not the workshop: validation belongs to no-mistakes, CI belongs to the forge, and merge policy belongs to the configured authority.
-It is not a general agent framework, not a hosted service, and not a prepackaged product; it is a template one person clones, owns, deeply customizes, and operates under their own identity.
-Setup stays that simple by design: clone the repo, run your agent in it, and that is it.
-The shared surface is generic and captain-agnostic; everything personal - preferences, projects, records, credentials - stays private to the home that owns it.
-This repository ships through its own discipline: firstmate work is validated like any other project's, and field incidents become regression coverage.
+Labmate coordinates work; no-mistakes owns validation, the forge owns CI, and the configured authority owns merging.
+It is a cloneable, individually operated distribution, not a hosted service or a new general-purpose framework.
+Shared defaults remain generic; personal preferences, projects, records, credentials, and research data remain private.
+This fork preserves Firstmate's history, MIT license, attribution, stable machine interfaces, and tested safeguards.
+Its contributions follow its own validation and PR discipline, targeting this fork rather than the original upstream.
 
-A change aligns when it deepens the captain's peace of mind, confidence, and ease of looking away, gives more shipped outcomes per unit of attention and tokens, makes delegation safer or more legible, strengthens a refusal path, keeps the system introspectable, hot-modifiable, and self-evolving, or lets the fleet survive another failure mode.
-A change should be resisted when it trades that experience for more noise or more context-switching, lets the fleet act beyond adjudicable intent, assumes consent instead of asking for it, adds a layer between intent and action, mixes scripted mechanics with agent judgment, spends tokens where a script would do, serves anyone but the captain, couples the distro to one vendor or session manager, buries an outcome in mechanics, or grows the command layer into the workshop it commands.
+A change belongs when it improves reliable outcomes per unit of attention, makes assignment safer or clearer, strengthens a refusal, or improves recovery.
+Resist changes that add noise, assume consent, widen intent, add unnecessary hierarchy, couple the lab to one vendor, or turn the manager into the implementation tool it coordinates.

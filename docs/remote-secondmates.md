@@ -1,11 +1,14 @@
-# Remote second mates
+<a id="remote-second-mates"></a>
 
-This page covers how to set up, provision, run, and retire a second mate whose Firstmate home lives on another host.
-It is for operators who run a remote second mate and for anyone checking its transport and safety behavior.
+# Remote postdocs
 
-Remote second mates place a whole persistent Firstmate home on another SSH-reachable host.
-The primary still owns routing and supervision, while the remote home owns its own projects, backlog, and workers.
-Firstmate does not support placing an individual worker remotely or failing a remote route over to a local replacement.
+This page covers setting up, provisioning, running, and retiring a postdoc whose Labmate home lives on another host.
+It is for operators and anyone checking transport and safety behavior.
+The [supervisor contract](../AGENTS.md) owns the lab vocabulary; `secondmate` remains the stable interface name in the commands, configuration, and transport references below.
+
+A remote postdoc uses a whole persistent Labmate home on another SSH-reachable host.
+The lab manager retains routing and supervision, while the remote home owns its own projects, research agenda, and lab members.
+Labmate does not support placing an individual task agent remotely or replacing an unavailable remote route with a local one.
 
 ## Find a topic
 
@@ -14,14 +17,14 @@ Firstmate does not support placing an individual worker remotely or failing a re
 | Prepare the primary and the remote host | [Prerequisites](#prerequisites) and [non-interactive tool contract](#non-interactive-tool-contract) |
 | Check whether a host is ready, or repair it | [Readiness, repair, and the human steps](#readiness-repair-and-the-human-steps) |
 | Create the route and the remote home | [Provision a route](#provision-a-route) |
-| Launch, recover, message, and read a remote second mate | [Normal operation](#normal-operation) |
-| Move queued work to the remote home | [Backlog handoff](#backlog-handoff) |
+| Launch, recover, message, and read a remote postdoc | [Normal operation](#normal-operation) |
+| Move queued work to the remote home | [Research agenda handoff](#backlog-handoff) |
 | Push configuration, relaunch, update, or retire | [Sync, update, and retirement](#sync-update-and-retirement) |
 | Run the tests or a real-host smoke test | [Verification](#verification) |
 
 ## Where the remote agent runs
 
-The remote second-mate agent itself always runs on the [Herdr backend](herdr-backend.md) in the shared `fm-remote` session.
+The remote postdoc agent itself always runs on the [Herdr backend](herdr-backend.md) in the shared `fm-remote` session.
 Every path that provisions or launches one refuses a host that is not ready for it.
 
 - `fm-remote` is reserved for remote fleet work and must not be used for personal work.

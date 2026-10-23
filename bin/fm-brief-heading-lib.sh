@@ -20,6 +20,8 @@ fm_brief_heading_parse() {  # <file|-> <heading> <body|present>
   fi
   awk -v heading="$heading" -v mode="$mode" '
     BEGIN {
+      if (heading == "## PI\047s intent") heading = "## Captain\047s intent"
+      if (heading == "## Lab manager spec") heading = "## Firstmate spec"
       target_level = 0
       while (substr(heading, target_level + 1, 1) == "#") target_level++
     }
@@ -50,7 +52,12 @@ fm_brief_heading_parse() {  # <file|-> <heading> <body|present>
         }
       }
 
-      if (!found && !was_fenced && line == heading) {
+      # Lab labels alias the existing provenance headings; old assignments
+      # remain readable by all consumers through this shared parser.
+      candidate = line
+      if (candidate == "## PI\047s intent") candidate = "## Captain\047s intent"
+      if (candidate == "## Lab manager spec") candidate = "## Firstmate spec"
+      if (!found && !was_fenced && candidate == heading) {
         found = 1
         if (mode == "present") next
         grab = 1

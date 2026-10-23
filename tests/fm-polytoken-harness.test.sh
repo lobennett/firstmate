@@ -414,8 +414,9 @@ test_polytoken_write_facet_carries_the_role_contract_without_a_model_pin() {
     "the facet must deny facet switching and delegation at the tool-registry level"
   assert_contains "$body" 'transclude("polytoken://system_prompts/facet.md")' \
     "the facet must transclude the shipped base prompt to keep the tool-use framing"
-  assert_contains "$body" "You are a crewmate" "the facet must carry the crewmate identity"
-  assert_contains "$body" "The tool_flow tool cannot read the Firstmate task directory" \
+  assert_contains "$body" "You are a lab member" "the facet must carry the lab-member identity"
+  assert_contains "$body" "for the same PI" "the facet must identify the PI without adopting a supervisor identity"
+  assert_contains "$body" "The tool_flow tool cannot read the Labmate task directory" \
     "the facet must warn that tool_flow cannot reach the task directory"
   assert_contains "$body" "call file_read and file_write directly or use the shell" \
     "the facet must point the model at the direct file tools or the shell for the task directory"

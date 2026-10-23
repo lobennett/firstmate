@@ -2,7 +2,7 @@
 name: updatefirstmate
 description: >-
   Self-update a running firstmate and its secondmates to the latest from origin.
-  Use when the captain invokes /updatefirstmate (e.g. "/updatefirstmate", "update firstmate", "pull the latest firstmate").
+  Use when the PI invokes /updatefirstmate or asks to update Labmate (legacy phrases "update firstmate" and "pull the latest firstmate" remain supported).
 user-invocable: true
 metadata:
   internal: true
@@ -88,7 +88,7 @@ This touches only the firstmate repo and its own worktrees, never anything under
 
 5. **Report to the captain in plain outcomes, in one line where you can.**
    Summarize what landed under `AGENTS.md` section 9 without firstmate's internal vocabulary: which parts of the fleet are now on the latest, and which were left as-is and why.
-   For example: "Captain, firstmate and both second mates are now on the latest."
+   For example: "PI, Labmate and both postdocs are now on the latest."
    Say plainly when a mate got the message rather than a clean reload, and why - never let a partial reload read as a full one.
    Surface any skipped target whose reason needs the captain's attention - for instance a home with its own un-landed changes (diverged) or local edits (dirty), which were left untouched on purpose.
 

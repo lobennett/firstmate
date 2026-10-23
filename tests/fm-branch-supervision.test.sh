@@ -42,9 +42,11 @@ test_branch_prompt_is_byte_stable_and_above_cache_floor() {
   size=${#out_a}
   [ "$size" -ge 5000 ] || fail "branch prompt is only $size bytes - below the provider caching minimum"
   case "$out_a" in
-    "You are the SUPERVISION BRANCH"*) ;;
+    "You are the SUPERVISION BRANCH of Labmate:"*) ;;
     *) fail "branch prompt lost its role preamble" ;;
   esac
+  assert_contains "$out_a" "MAIN owns every word the PI sees" "branch prompt did not use the PI-facing lab persona"
+  assert_contains "$out_a" "unchanged routine-or-captain machine verdict" "branch prompt renamed a wire verdict"
   case "$out_a" in
     *"stuck-crewmate-recovery"*) ;;
     *) fail "branch prompt lost the inlined recovery playbook" ;;

@@ -448,6 +448,37 @@ EOF
   pass "promotion keeps a scout's recorded base branch and refuses local-only for it"
 }
 
+# Exercise the shared public reader, not the parser source: old on-disk
+# assignments and newly generated lab assignments must keep identical intent
+# provenance, placeholder refusal, and operator-address checks.
+test_lab_assignment_provenance_is_backward_compatible() {
+  local file intent_heading spec_heading label
+  file="$TMP_ROOT/lab-assignment.md"
+  for label in legacy lab; do
+    if [ "$label" = legacy ]; then
+      intent_heading="## Captain's intent"
+      spec_heading="## Firstmate spec"
+    else
+      intent_heading="## PI's intent"
+      spec_heading="## Lab manager spec"
+    fi
+    printf '# Task\n%s\n{TASK}\n%s\n{FIRSTMATE_SPEC}\n' "$intent_heading" "$spec_heading" > "$file"
+    fm_brief_task_placeholders_present "$file" || fail "$label placeholders were accepted as filled intent"
+    printf '# Task\n%s\nPreserve the analysis.\n%s\nRun focused tests.\n# Setup\nIsolated copy.\n' "$intent_heading" "$spec_heading" > "$file"
+    fm_brief_task_content_valid "$file" || fail "$label assignment was rejected"
+    assert_equals 'Preserve the analysis.' "$(fm_brief_task_heading_body "$file" "## Captain's intent")" \
+      "$label intent extraction changed or included manager specification"
+    assert_equals 'Run focused tests.' "$(fm_brief_task_heading_body "$file" '## Lab manager spec')" \
+      "$label manager specification alias did not parse"
+    printf '# Task\n%s\nPI, change this.\n%s\nKeep provenance.\n' "$intent_heading" "$spec_heading" > "$file"
+    fm_brief_intent_address_line "$file" >/dev/null || fail "$label accepted a PI address as intent"
+    printf '# Task\n%s\nPreserve the analysis.\n%s\n' "$intent_heading" "$spec_heading" > "$file"
+    if fm_brief_task_content_valid "$file"; then fail "$label accepted an empty manager specification"; fi
+  done
+  pass 'legacy and lab assignments preserve intent provenance, placeholders, and address safeguards'
+}
+
+test_lab_assignment_provenance_is_backward_compatible
 test_scout_done_is_not_gated
 test_unpushed_ship_done_is_refused
 test_no_mistakes_prevalidation_done_is_not_gated
@@ -479,7 +510,7 @@ test_worker_role_names_skill_and_fallback_file() {
   path="$ROOT/.agents/skills/firstmate-coding-guidelines/SKILL.md"
   [ -f "$path" ] || fail "Firstmate skill file is missing at $path"
   fm_brief_worker_role "$TMP_ROOT/state" upstream-4751 "$ROOT" >"$role_file"
-  assert_grep "\`CONTRIBUTING.md\` and \`firstmate-coding-guidelines\` for Firstmate changes" "$role_file" \
+  assert_grep "\`CONTRIBUTING.md\` and \`firstmate-coding-guidelines\` for Labmate changes" "$role_file" \
     "worker role did not name the skill"
   assert_grep "If the \`firstmate-coding-guidelines\` skill name does not resolve in this session, read \`$path\` instead." "$role_file" \
     "worker role did not name the skill file as the fallback"
