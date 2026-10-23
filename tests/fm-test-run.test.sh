@@ -1191,12 +1191,15 @@ test_portable_serial_hint_coverage_is_reported_and_bounded() {
 }
 
 test_portable_serial_packing_budget_boundary() {
-  local tmp repo script weight out rc
+  local tmp repo script weight out rc shards members
   tmp=$(fm_test_tmproot fm-test-run-packing-boundary)
   repo="$tmp/repo"
   mkdir -p "$repo/bin" "$repo/tests"
   # Preserve the real inventory and packing policy without executing suites.
-  # Only the fixture's measured timing input changes at the boundary.
+  # Only the fixture's measured timing input changes at the boundary. The seed
+  # is the heaviest serial script: longest-first packing gives it shard 1 and,
+  # since every other shard already ends below it, nothing else joins it. Its
+  # shard total is therefore exactly the seeded weight.
   while IFS= read -r script; do
     printf '#!/usr/bin/env bash\nexit 0\n' >"$repo/$script"
   done < <("$RUNNER" --list --all)
@@ -1209,11 +1212,15 @@ from pathlib import Path
 import re, sys
 runner = Path(sys.argv[1])
 runner.write_text(re.sub(
-    r"(?m)^tests/fm-watch-triage\.test\.sh [0-9]+$",
-    f"tests/fm-watch-triage.test.sh {sys.argv[2]}",
+    r"(?m)^tests/fm-supervision-host\.test\.sh [0-9]+$",
+    f"tests/fm-supervision-host.test.sh {sys.argv[2]}",
     runner.read_text(),
 ))
 PY
+    shards=$(bash "$repo/bin/fm-test-run.sh" --list-lanes | grep -c '^portable-serial-[0-9]*of[0-9]*$')
+    members=$(bash "$repo/bin/fm-test-run.sh" --list --lane "portable-serial-1of${shards}")
+    [ "$members" = "tests/fm-supervision-host.test.sh" ] \
+      || fail "seeded shard must carry only the seeded script, got: $members"
     out=$(bash "$repo/bin/fm-test-run.sh" --check-coverage 2>&1) && rc=0 || rc=$?
     if [ "$weight" -eq 1200000 ]; then
       expect_code 0 "$rc" "packing exactly at the budget must be accepted"
