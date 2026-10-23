@@ -51,7 +51,9 @@ setup_required() {  # <reason>
   exit 1
 }
 if [ "${FM_CLAUDE_CALM_LIVE_PREPARE:-}" = 1 ]; then
-  mkdir -p "$FIXTURE" && : >"$FIXTURE/$FIXTURE_MARKER" || fail "could not prepare $FIXTURE"
+  if ! { mkdir -p "$FIXTURE" && : >"$FIXTURE/$FIXTURE_MARKER"; }; then
+    fail "could not prepare $FIXTURE"
+  fi
   setup_required "prepared $FIXTURE; native proof remains unverified until the operator approves it"
 fi
 [ -n "${FM_CLAUDE_CALM_LIVE_PROJECT:-}" ] \
@@ -541,6 +543,8 @@ send '/exit'
 enter
 sleep 2
 # The approved fixture keeps earlier runs' transcripts, so only the newest one counts.
+# Claude Code names transcripts by UUID, so ls -t mtime ordering is safe here.
+# shellcheck disable=SC2012
 notes_session=$(ls -t "$HOME/.claude/projects/"*"$(basename "$PROJECT" | tr -c 'A-Za-z0-9\n' -)"*/*.jsonl 2>/dev/null | head -n 1)
 grep -qF 'GREEN_HARBOR_LANTERN' "$notes_session" 2>/dev/null || notes_session=
 [ -n "$notes_session" ] || fail "could not find the session transcript Claude Code stored for the notes turn"
