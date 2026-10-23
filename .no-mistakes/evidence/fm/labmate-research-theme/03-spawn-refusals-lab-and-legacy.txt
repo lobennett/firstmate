@@ -1,0 +1,38 @@
+=== A: lab headings, intent opens with "PI:" address ===
+# Task
+## PI's intent
+PI: please add a README to the demo project.
+
+## Lab manager spec
+Create README.md with a one-line description.
+
+# Herdr lifecycle declaration - NOT ENABLED
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-ship-1/brief.md ## PI's intent (legacy ## Captain's intent) has an operator-address line: PI: please add a README to the demo project.; write the PI's actual words without a PI or Captain label or address before spawn, since the heading already records provenance
+exit=1
+
+=== B: lab headings, empty Lab manager spec body ===
+# Task
+## PI's intent
+Add a README to the demo project.
+
+## Lab manager spec
+
+# Herdr lifecycle declaration - NOT ENABLED
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-ship-1/brief.md must contain nonempty ## PI's intent and ## Lab manager spec subsections (legacy ## Captain's intent and ## Firstmate spec) (or a nonempty legacy # Task body) before spawn
+exit=1
+
+=== C: LEGACY headings (## Captain's intent / ## Firstmate spec) still parsed: Captain address refused ===
+# Task
+## Captain's intent
+Captain: add a README.
+
+## Firstmate spec
+Create README.md.
+
+# Herdr lifecycle declaration - NOT ENABLED
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-ship-1/brief.md ## PI's intent (legacy ## Captain's intent) has an operator-address line: Captain: add a README.; write the PI's actual words without a PI or Captain label or address before spawn, since the heading already records provenance
+exit=1
+
+=== D: legacy headings with placeholders ===
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-ship-1/brief.md still contains {TASK} or {FIRSTMATE_SPEC}; fill ## PI's intent (legacy ## Captain's intent) and ## Lab manager spec (legacy ## Firstmate spec) before spawn
+exit=1

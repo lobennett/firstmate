@@ -1,0 +1,32 @@
+$ fm-promote.sh lab-scout-2 --mode local-only --yolo off
+promoted lab-scout-2 to ship mode=local-only yolo=off (teardown protection restored)
+wrote ship instructions for mode=local-only: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-scout-2/ship-instructions.md
+next: FM_HOME=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq bin/fm-send.sh fm-lab-scout-2 "$(cat /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-scout-2/ship-instructions.md)"
+exit=0
+
+--- meta ---
+window=fm-lab-scout-2
+worktree=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/projects/demo
+project=/private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/projects/demo
+kind=ship
+mode=local-only
+yolo=off
+branch=fm/lab-scout-2
+
+--- ship-instructions.md Task section ---
+# Task
+## PI's intent
+Find out why preprocessing is flaky and fix it if the cause is clear.
+
+## Lab manager spec
+If these promotion steps were already completed before a relaunch, preserve the existing `fm/lab-scout-2` branch and continue from its current state; do not repeat them destructively.
+1. **Verify isolation before anything else.** Run `pwd -P` and `git rev-parse --show-toplevel`; both must resolve to the disposable task worktree you were launched in, such as a treehouse pool path or an Orca-managed worktree, not the primary checkout firstmate operates from. If either does not resolve to the worktree you were launched in, stop and escalate to firstmate.
+2. Inventory this worktree's scratch state with `git status` and `git log` before changing anything.
+3. Return to a clean default-branch base, then create your branch: `git checkout -b fm/lab-scout-2 --`.
+4. Carry over only the intended fix changes. Leave scratch commits, debug edits, and experiment files behind.
+5. If you reproduced a bug, turn that reproduction into a regression test.
+6. Treat the scout-time Firstmate spec and any unmarked legacy `# Task` text as investigation context, not captain intent or current ship-time instructions.
+7. Everything else in your original instructions carries over unchanged: the status protocol; the instruction inbox and its acknowledgement; the escalation rules, including ask-user; and every safety rule, except where the current delivery contract below explicitly replaces scout-only delivery rules.
+
+
+# Current delivery mode contract

@@ -1,0 +1,4 @@
+$ fm-spawn.sh lab-ship-1 projects/demo --mode local-only --yolo off   # placeholders unfilled
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.DN8wIq/data/lab-ship-1/brief.md still contains {TASK} or {FIRSTMATE_SPEC}; fill ## PI's intent (legacy ## Captain's intent) and ## Lab manager spec (legacy ## Firstmate spec) before spawn
+exit=1
