@@ -18,7 +18,7 @@ test_primary_and_secondmate_instruction_generation() {
   ship="$home/data/authority-worker/brief.md"
   assert_grep 'ask-user findings are never yours to answer' "$ship" \
     "generated implementation brief lets the worker own an ask-user decision"
-  assert_grep "Firstmate applies \`ask-user-authority\` and obtains any required captain decision" "$ship" \
+  assert_grep "The lab manager applies \`ask-user-authority\` and obtains any required PI decision" "$ship" \
     "generated implementation brief bypasses the primary authority owner"
   # shellcheck disable=SC2016 # Backticks are literal generated Markdown.
   assert_grep 'NEVER pass `--yes` (or `-y`) to `no-mistakes axi run` or `no-mistakes axi respond`' "$ship" \
