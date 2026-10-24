@@ -43,12 +43,16 @@ import { pathToFileURL } from "node:url";
 const mode = process.env.MODE;
 const summary = { executed: 0, nativePrompt: false, claims: [], responses: [], blocks: [] };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const waitForFile = async (path, ms = 20000) => {
+// Resolves true once the file exists, or false once stopped() turns true, so a
+// wait the call no longer needs does not hold the process open until timeout.
+const waitForFile = async (path, ms = 20000, stopped = () => false) => {
   const until = Date.now() + ms;
   while (!existsSync(path)) {
+    if (stopped()) return false;
     if (Date.now() > until) throw new Error(`timed out waiting for ${path}`);
     await sleep(25);
   }
+  return true;
 };
 
 const emitter = new EventEmitter();
@@ -102,11 +106,14 @@ function cooperativeGuard() {
     writeFileSync(`${process.env.CLAIM_MARKER}.${claimCount}`, JSON.stringify(claimed));
     if (mode === "exit-after-claim") process.exit(0);
     if (mode === "cancel") setTimeout(() => controller.abort(), 100);
-    if (mode === "cancel-on-marker") waitForFile(process.env.CANCEL_MARKER, 60000).then(() => controller.abort());
+    let answered = false;
+    const isAnswered = () => answered;
+    if (mode === "cancel-on-marker") waitForFile(process.env.CANCEL_MARKER, 60000, isAnswered).then((hit) => { if (hit) controller.abort(); });
     const release = process.env.RELEASE_MARKER
-      ? waitForFile(process.env.RELEASE_MARKER, 60000).then(() => ({ verdict: "abort", reason: "fixture guard stopped waiting" }))
+      ? waitForFile(process.env.RELEASE_MARKER, 60000, isAnswered).then(() => ({ verdict: "abort", reason: "fixture guard stopped waiting" }))
       : new Promise(() => {});
     const verdict = await Promise.race([response, release]);
+    answered = true;
     summary.responses.push(verdict);
     if (verdict.verdict === "run") return undefined;
     return { block: true, reason: verdict.reason };
