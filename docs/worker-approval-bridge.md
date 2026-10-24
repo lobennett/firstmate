@@ -48,7 +48,7 @@ A guard speaks the contract from its `tool_call` handler through `pi.events`, be
    Silence is never `run`; a guard that chooses to stop waiting must refuse the command, and the bridge records that as a cancelled request.
 
 The three channel names and payload fields above are stable public API.
-The bridge ignores a request whose shape it cannot verify or whose tool call Pi has not announced, which leaves the guard on its standalone path.
+The bridge ignores a request whose shape it cannot verify, whose tool call Pi has not announced, or whose tool call an earlier request already claimed, which leaves the guard on its standalone path.
 
 ## Detection without a cooperative guard
 

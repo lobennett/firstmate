@@ -151,6 +151,8 @@ fm_worker_approval_request_valid() {  # <record>
 fm_worker_approval_state() {  # <approvals-dir> <approval-id>
   local dir=$1 id=$2 verdict
   fm_worker_approval_request_valid "$dir/$id.request" 2>/dev/null || { printf 'invalid'; return 0; }
+  [ ! -e "$dir/$id.cancelled" ] || { printf 'cancelled'; return 0; }
+  [ ! -e "$dir/$id.retired" ] || { printf 'retired'; return 0; }
   if [ -e "$dir/$id.response" ]; then
     verdict=$(fm_worker_approval_field "$dir/$id.response" verdict 2>/dev/null) || verdict=
     case "$verdict" in
@@ -160,8 +162,6 @@ fm_worker_approval_state() {  # <approvals-dir> <approval-id>
     esac
     return 0
   fi
-  [ ! -e "$dir/$id.cancelled" ] || { printf 'cancelled'; return 0; }
-  [ ! -e "$dir/$id.retired" ] || { printf 'retired'; return 0; }
   printf 'pending'
 }
 

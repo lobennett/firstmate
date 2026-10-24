@@ -227,6 +227,9 @@ cmd_respond() {
     refuse "request $id was closed concurrently; nothing written"
   fi
   mv "$tmp" "$dir/$id.response" || { rm -f "$tmp"; refuse "could not publish the response record under $dir"; }
+  if [ -e "$dir/$id.cancelled" ] || [ -e "$dir/$id.retired" ]; then
+    refuse "request $id was closed concurrently; the worker keeps the command refused and the response does not apply"
+  fi
 
   local append_rc=0
   fm_wake_status_append_self_announced "$STATE" "$STATE/$task.status" "$close_line" || append_rc=$?

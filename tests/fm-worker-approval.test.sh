@@ -102,11 +102,52 @@ function cooperativeGuard() {
     writeFileSync(`${process.env.CLAIM_MARKER}.${claimCount}`, JSON.stringify(claimed));
     if (mode === "exit-after-claim") process.exit(0);
     if (mode === "cancel") setTimeout(() => controller.abort(), 100);
+    if (mode === "cancel-on-marker") waitForFile(process.env.CANCEL_MARKER, 60000).then(() => controller.abort());
     const release = process.env.RELEASE_MARKER
       ? waitForFile(process.env.RELEASE_MARKER, 60000).then(() => ({ verdict: "abort", reason: "fixture guard stopped waiting" }))
       : new Promise(() => {});
     const verdict = await Promise.race([response, release]);
     summary.responses.push(verdict);
+    if (verdict.verdict === "run") return undefined;
+    return { block: true, reason: verdict.reason };
+  });
+}
+// A guard that sends a second request for a tool call it already got claimed,
+// either while the first is pending or after it was answered.
+function bindRequest(requestId, event, c) {
+  let claimed = null;
+  let off;
+  const offClaim = events.on("firstmate:worker-approval-claimed", (d) => { if (d?.requestId === requestId) claimed = d; });
+  const response = new Promise((resolve) => {
+    off = events.on("firstmate:worker-approval-response", (d) => { if (d?.requestId === requestId) { off(); resolve(d); } });
+  });
+  events.emit("firstmate:worker-approval-request", {
+    requestId, toolCallId: event.toolCallId, toolName: "bash", command: event.input.command, cwd: c.cwd,
+    guard: "fixture-guard", severity: "medium", reasons: ["fixture reason"], signal: c.signal,
+  });
+  offClaim();
+  return { claimed, response, off };
+}
+async function probeDuplicate(event, c) {
+  const b = bindRequest(`fixture-b-${event.toolCallId}`, event, c);
+  summary.duplicateClaimed = Boolean(b.claimed);
+  summary.duplicateResponse = await Promise.race([b.response, sleep(300).then(() => null)]);
+  b.off();
+}
+function duplicateGuard() {
+  pi.on("tool_call", async (event, c) => {
+    if (event.toolName !== "bash") return;
+    const a = bindRequest(`fixture-a-${event.toolCallId}`, event, c);
+    if (!a.claimed) {
+      summary.nativePrompt = true;
+      return { block: true, reason: "fixture native prompt: no coordinator claimed the request" };
+    }
+    summary.claims.push(a.claimed);
+    writeFileSync(`${process.env.CLAIM_MARKER}.1`, JSON.stringify(a.claimed));
+    if (mode === "duplicate-pending") await probeDuplicate(event, c);
+    const verdict = await a.response;
+    summary.responses.push(verdict);
+    if (mode === "duplicate-settled") await probeDuplicate(event, c);
     if (verdict.verdict === "run") return undefined;
     return { block: true, reason: verdict.reason };
   });
@@ -134,10 +175,14 @@ async function runBashCall(toolCallId, command) {
 }
 
 switch (mode) {
-  case "approve": case "deny": case "invalid-response": case "stale": case "cancel": case "exit-after-claim":
+  case "approve": case "deny": case "invalid-response": case "stale": case "cancel": case "cancel-on-marker": case "exit-after-claim":
     cooperativeGuard();
     await runBashCall("call-1", process.env.COMMAND);
     if (mode === "approve") await runBashCall("call-2", `${process.env.COMMAND}\n# second call`);
+    break;
+  case "duplicate-pending": case "duplicate-settled":
+    duplicateGuard();
+    await runBashCall("call-1", process.env.COMMAND);
     break;
   case "unavailable":
     cooperativeGuard();
@@ -400,6 +445,73 @@ test_interrupted_turn_cancels_the_request() {
   pass "an interrupted worker turn cancels its pending request and refuses a late answer"
 }
 
+test_answer_racing_an_interrupt_stays_refused() {
+  local rec id=wa-race approval dir out shim
+  rec=$(make_case race "$id")
+  spawn_pi_worker "$rec" "$id"
+  start_driver cancel-on-marker 1 "$CASE_DIR" CANCEL_MARKER="$CASE_DIR/cancel"
+  wait_file "$CLAIM_MARKER.1" "the guard's claim"
+  approval=$(claimed_approval_id "$CLAIM_MARKER.1")
+  dir=$(fm_worker_approval_dir "$STATE_DIR" "$id")
+  # Interrupt the worker turn after respond's last pending check and before it
+  # publishes the response, then let the publish proceed.
+  shim="$CASE_DIR/shim"
+  mkdir -p "$shim"
+  cat > "$shim/mv" <<'SHIM'
+#!/usr/bin/env bash
+case "${2:-}" in
+  *.response)
+    : > "$CANCEL_MARKER"
+    i=0
+    while [ ! -e "${2%.response}.cancelled" ]; do
+      i=$((i + 1))
+      [ "$i" -lt 400 ] || exit 1
+      sleep 0.05
+    done
+    ;;
+esac
+exec /bin/mv "$@"
+SHIM
+  chmod +x "$shim/mv"
+  out=$(PATH="$shim:$PATH" CANCEL_MARKER="$CASE_DIR/cancel" FM_HOME="$HOME_DIR" "$APPROVAL" respond "$id" "$approval" approve 2>&1)
+  expect_code 1 $? "an answer that lost the race to an interrupt must be refused: $out"
+  assert_contains "$out" "was closed concurrently" "race refusal reason"
+  finish_driver
+  assert_equals 0 "$(summary_field .executed)" "an interrupted call must not execute"
+  assert_equals '"abort"' "$(summary_field '.responses[0].verdict')" "the guard did not receive abort on interrupt"
+  assert_equals cancelled "$(fm_worker_approval_state "$dir" "$approval")" "an aborted command must not be reported approved"
+  out=$(FM_HOME="$HOME_DIR" "$APPROVAL" show "$id" "$approval" 2>&1)
+  assert_contains "$out" "state=cancelled" "show must report the aborted command as cancelled"
+  if grep -F -- "[key=approval-$approval]" "$STATE_DIR/$id.status" | grep -F -- ": approved" >/dev/null; then
+    fail "the status log recorded an approval for a command the worker aborted"
+  fi
+  pass "an answer that races a worker interrupt stays refused and is never reported approved"
+}
+
+test_duplicate_request_for_a_claimed_call_is_left_unclaimed() {
+  local phase rec id approval dir out
+  for phase in pending settled; do
+    id="wa-dup-$phase"
+    rec=$(make_case "duplicate-$phase" "$id")
+    spawn_pi_worker "$rec" "$id"
+    start_driver "duplicate-$phase" 1 "$CASE_DIR"
+    wait_file "$CLAIM_MARKER.1" "the first request's claim"
+    approval=$(claimed_approval_id "$CLAIM_MARKER.1")
+    out=$(FM_HOME="$HOME_DIR" "$APPROVAL" respond "$id" "$approval" approve 2>&1)
+    expect_code 0 $? "approving the first request should succeed: $out"
+    finish_driver
+    assert_equals '"fixture-a-call-1"' "$(summary_field '.claims[0].requestId')" "the matching first request must be claimed ($phase)"
+    assert_equals '"run"' "$(summary_field '.responses[0].verdict')" "the first request must receive its own answer ($phase)"
+    assert_equals '"fixture-a-call-1"' "$(summary_field '.responses[0].requestId')" "the answer must address the first request ($phase)"
+    assert_equals 1 "$(summary_field .executed)" "the approved call runs exactly once ($phase)"
+    assert_equals false "$(summary_field .duplicateClaimed)" "a second request for a claimed call must stay unclaimed ($phase)"
+    assert_equals null "$(summary_field .duplicateResponse)" "an unclaimed second request receives no answer ($phase)"
+    dir=$(fm_worker_approval_dir "$STATE_DIR" "$id")
+    assert_equals 1 "$(find "$dir" -name '*.request' | wc -l | tr -d ' ')" "a second request must not open another record ($phase)"
+  done
+  pass "a second request for an already claimed call, pending or answered, is left unclaimed"
+}
+
 test_restart_retires_unanswered_requests() {
   local rec id=wa-retire approval dir out
   rec=$(make_case retire "$id")
@@ -466,6 +578,8 @@ test_deny_refuses_the_call
 test_unbound_response_record_is_refused_by_the_bridge
 test_stale_incarnation_and_cross_task_answers_are_refused
 test_interrupted_turn_cancels_the_request
+test_answer_racing_an_interrupt_stays_refused
+test_duplicate_request_for_a_claimed_call_is_left_unclaimed
 test_restart_retires_unanswered_requests
 test_no_bridge_leaves_the_guard_standalone
 test_native_prompt_is_detected_and_closed

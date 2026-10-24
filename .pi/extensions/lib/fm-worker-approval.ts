@@ -249,6 +249,12 @@ export function installWorkerApproval(pi: ExtensionApiLike, options: WorkerAppro
 
   const checkResponse = (claim: Claim): void => {
     if (claim.settled) return;
+    for (const kind of ["cancelled", "retired"] as const) {
+      if (existsSync(join(approvalsDir, `${claim.approvalId}.${kind}`))) {
+        settle(claim, "abort", `request ${kind} before an answer`);
+        return;
+      }
+    }
     const responsePath = join(approvalsDir, `${claim.approvalId}.response`);
     if (existsSync(responsePath)) {
       const header = readHeader(responsePath);
@@ -272,13 +278,6 @@ export function installWorkerApproval(pi: ExtensionApiLike, options: WorkerAppro
       } else {
         settle(claim, "abort", `denied by the coordinator${header.note ? `: ${header.note}` : ""}`);
       }
-      return;
-    }
-    for (const kind of ["cancelled", "retired"] as const) {
-      if (existsSync(join(approvalsDir, `${claim.approvalId}.${kind}`))) {
-        settle(claim, "abort", `request ${kind} before an answer`);
-        return;
-      }
     }
   };
 
@@ -288,12 +287,9 @@ export function installWorkerApproval(pi: ExtensionApiLike, options: WorkerAppro
     const call = pending.get(request.toolCallId);
     // Claim only the exact pending tool call Pi announced; anything else is
     // left unclaimed so a guard keeps its own standalone behavior.
-    if (!call || call.command !== request.command) return;
-    if (call.claim) {
-      emit(WORKER_APPROVAL_CLAIMED_EVENT, { requestId: request.requestId, approvalId: call.claim.approvalId, taskId });
-      if (call.claim.settled) checkResponse(call.claim);
-      return;
-    }
+    // A tool call has one owner: a second request for an already claimed call
+    // is left unclaimed, since every answer is addressed to the first.
+    if (!call || call.command !== request.command || call.claim) return;
     const approvalId = sha256([taskId, gen, request.toolCallId, request.cwd, request.command].join("\n")).slice(0, 16);
     const claim: Claim = {
       approvalId,
