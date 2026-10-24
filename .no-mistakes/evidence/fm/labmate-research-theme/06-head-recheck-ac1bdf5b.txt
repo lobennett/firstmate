@@ -1,0 +1,56 @@
+### HEAD ac1bdf5b fresh canonical lab home
+$ fm-brief.sh lab-ship-1 demo --mode local-only
+scaffolded: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-ship-1/brief.md (ship, mode=local-only; replace {TASK} and {FIRSTMATE_SPEC})
+exit=0
+--- assignment head ---
+You are a lab member assigned implementation by the lab manager.
+Use the responsibility appropriate to this assignment: postdoc for senior investigation, graduate researcher for bounded implementation or analysis, research coordinator for routine operations; these are not fixed model ranks or a serial delegation chain.
+Work on your own; do not wait for a human.
+
+# Task
+## PI's intent
+{TASK}
+
+## Lab manager spec
+{FIRSTMATE_SPEC}
+
+# Herdr lifecycle declaration - NOT ENABLED
+
+$ fm-spawn.sh lab-ship-1 projects/demo --mode local-only --yolo off   # placeholders unfilled
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-ship-1/brief.md still contains {TASK} or {FIRSTMATE_SPEC}; fill ## PI's intent (legacy ## Captain's intent) and ## Lab manager spec (legacy ## Firstmate spec) before spawn
+exit=1
+
+=== lab headings, PI: address in intent ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-ship-1/brief.md ## PI's intent (legacy ## Captain's intent) has an operator-address line: PI: please add a README.; write the PI's actual words without a PI or Captain label or address before spawn, since the heading already records provenance
+exit=1
+
+=== lab headings, empty Lab manager spec ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-ship-1/brief.md must contain nonempty ## PI's intent and ## Lab manager spec subsections (legacy ## Captain's intent and ## Firstmate spec) (or a nonempty legacy # Task body) before spawn
+exit=1
+
+=== LEGACY headings still parsed; Captain address refused ===
+# Task
+## Captain's intent
+Captain: add a README.
+
+## Firstmate spec
+Create README.md.
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg
+error: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-ship-1/brief.md ## PI's intent (legacy ## Captain's intent) has an operator-address line: Captain: add a README.; write the PI's actual words without a PI or Captain label or address before spawn, since the heading already records provenance
+exit=1
+
+=== scout scaffold + promote with unfilled placeholders ===
+scaffolded: /private/var/folders/wb/9twrk0d537vflj86g4dtzkyr0000gn/T/fm-lab.PLzXxg/data/lab-scout-2/brief.md (scout; replace {TASK} and {FIRSTMATE_SPEC})
+# Task
+## PI's intent
+{TASK}
+
+## Lab manager spec
+{FIRSTMATE_SPEC}
+
+# Herdr lifecycle declaration - NOT ENABLED
+error: promotion requires --mode <no-mistakes|direct-PR|local-only>; decide it now from the scout's findings and the project's registered posture in data/projects.md
+exit=1
