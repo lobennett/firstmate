@@ -278,6 +278,14 @@ Each record is bound to an incarnation token minted when the task's wiring is ar
 Three rendered-text checks deliberately remain outside this contract because they answer delivery questions: submit acknowledgement and the away-mode supervisor-pane busy guard consume the shared delivery-footer matcher owned by `bin/fm-composer-lib.sh`, while `bin/fm-pending-reply-lib.sh` owns the secondmate delivery-confirmation observation.
 All are harness-scoped rather than a global pattern union, and none is a recorded worker state source.
 
+## Worker approvals stay with the coordinator
+
+A Pi worker has no permission system of its own, but an operator-installed guard extension can still stop a flagged bash command behind a Run / Abort dialog in the worker's unattended pane.
+The per-task Pi extension `bin/fm-spawn.sh` writes installs the worker approval bridge from `.pi/extensions/lib/fm-worker-approval.ts`: a guard that speaks the cooperative event-bus contract hands its verdict to the bridge, which records the request under `state/<id>.approvals`, opens a keyed `needs-decision` in the task's status log, and releases exactly that one tool call only when `bin/fm-worker-approval.sh respond` writes a response bound to the same request, task, incarnation, and command digest.
+A guard that does not cooperate keeps its own dialog; the bridge then only detects the stall through Pi's `ui_prompt_start` event and opens a keyed `blocked` line naming the command, so the coordinator learns at once that the pane needs a keypress instead of waiting for the stale timer.
+Nothing in the bridge changes which commands a guard flags, and silence, a stale answer, a duplicate answer, or an answer addressed to another task never releases a command.
+[`docs/worker-approval-bridge.md`](worker-approval-bridge.md) owns the contract and `bin/fm-worker-approval-lib.sh` the record format.
+
 ## Runtime session backends
 
 The runtime backend is the session-provider layer below firstmate's scripts.

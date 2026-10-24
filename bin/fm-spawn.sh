@@ -472,7 +472,11 @@
 #                  turn-end signal rides the launch command, e.g. codex -c notify=[...])
 #     __PIEXT__    absolute path to state/<task-id>.pi-ext.ts (pi busy-state extension,
 #                  written by this script; outside the worktree to avoid pi's trust gate;
-#                  a secondmate loads it beside its two primary extensions)
+#                  a secondmate loads it beside its two primary extensions). It also
+#                  installs the worker approval bridge from the tracked
+#                  .pi/extensions/lib/fm-worker-approval.ts (docs/worker-approval-bridge.md)
+#                  bound to this launch's busy gen, so a cooperative guard's request
+#                  lands under state/<task-id>.approvals as a keyed needs-decision.
 #     __PITURNEND__ absolute path to .pi/extensions/fm-primary-turnend-guard.ts in a pi secondmate home
 #     __PIWATCH__   absolute path to .pi/extensions/fm-primary-pi-watch.ts in a pi secondmate home
 #     __OMPBIN__   quoted concrete omp executable path resolved from PATH
@@ -5836,7 +5840,9 @@ EOF
 // current-state truth.
 import { execFile } from "node:child_process";
 import { appendFileSync } from "node:fs";
+import { installWorkerApproval } from "$FM_ROOT/.pi/extensions/lib/fm-worker-approval.ts";
 const notifyTurnEnd = $busy_notify_turnend;
+const stateDir = $(perl -MJSON::PP -MEncode=decode_utf8 -e 'print encode_json(decode_utf8($ARGV[0]))' -- "$STATE_REAL");
 const excludeTools = "$EXCLUDE_TOOLS".split(",").filter(Boolean);
 const excludeFile = $(perl -MJSON::PP -MEncode=decode_utf8 -e 'print encode_json(decode_utf8($ARGV[0]))' -- "$CONFIG/crew-exclude-tools");
 const statusFile = $(perl -MJSON::PP -MEncode=decode_utf8 -e 'print encode_json(decode_utf8($ARGV[0]))' -- "$STATE/$ID.status");
@@ -5849,6 +5855,10 @@ const busyEvent = (state: string, event: string) =>
   });
 export default function (pi: any) {
   let checkedExclusions = false;
+  // Worker approval bridge (docs/worker-approval-bridge.md): a cooperative
+  // guard's request is recorded under state/<id>.approvals and surfaced as a
+  // keyed needs-decision; a native prompt stall is surfaced as a keyed blocker.
+  installWorkerApproval(pi, { taskId: "$ID", gen: "$BUSY_GEN", stateDir, statusFile });
   pi.on("agent_start", async () => {
     await busyEvent("busy", "agent-start");
     // Verify only this worker's registry, never connect servers from Firstmate.

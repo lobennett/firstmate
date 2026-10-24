@@ -3016,3 +3016,25 @@ The full run's native Ahoy cases depend on the model's own choices and failed wi
 
 A real `bin/fm-spawn.sh --scout --harness opencode --model opencode-go/deepseek-v4.1-flash` in a private tmux server recorded `opencode_version=1.18.20` (and `1.18.31` on the second release), launched the worker as `opencode --model opencode-go/deepseek-v4.1-flash --prompt <brief>` with no `--standalone`, and the worker answered its brief.
 `bin/fm-control.sh <task> exit` then resolved the typed `/exit` from that recorded major and returned both panes to the shell.
+
+## Pi worker approval bridge
+
+Verified on 2026-10-24 on macOS arm64 with Node 26.0.0 against the installed Pi 1.4.0 source, in a plain Node host with no live Pi session.
+The contract facts the bridge relies on were read from that release's `dist/core/extensions/loader.js` (project, then user-level, then `-e` extension load order), `runner.js` (`emitToolCall` awaits each `tool_call` handler in load order and returns at the first block; `ui_prompt_start` and `ui_prompt_end` are emitted around every extension dialog), `event-bus.js` (`emit` is synchronous), and agent-core's `executeToolCallsSequential` (`tool_execution_start` is emitted before `prepareToolCall` runs the gate).
+
+`tests/fm-worker-approval.test.sh` runs the real `bin/fm-spawn.sh` against a fake pane, drives the generated per-task extension next to a fixture guard that speaks the cooperative contract, and answers through the real `bin/fm-worker-approval.sh`:
+
+```
+$ bash tests/fm-worker-approval.test.sh
+ok - approve releases exactly its own call once; a duplicate answer, a later command, and a cancelled request are refused
+ok - deny makes the guard refuse the command and closes the decision
+ok - a response record whose digest does not match the pending command is refused by the bridge
+ok - stale-incarnation and cross-task answers are refused and write nothing
+ok - an interrupted worker turn cancels its pending request and refuses a late answer
+ok - a worker restart retires requests nobody answered and refuses late answers
+ok - a guard with no coordinator present keeps its standalone behavior and nothing is approved
+ok - a native confirmation is surfaced as a keyed blocker while open and closed when the dialog closes
+all fm-worker-approval tests passed
+```
+
+No shipped guard extension adopts the contract, so no live guard exercises a real Pi dialog here: native coverage of an actual guard remains unverified until one adopts the contract and a live guard in the `live-harness-optin` family drives it.

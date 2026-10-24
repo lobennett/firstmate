@@ -1,7 +1,7 @@
 ---
 name: stuck-crewmate-recovery
 description: >-
-  Load when the session-start digest reports an ordinary direct report's endpoint dead or its metadata has no window, after a stale wake, looping pane, repeated confusion, an answered-by-brief question, an unresponsive crewmate, or a failed steer, after observing a defeated Claude or Codex bypass, and when a live crewmate reports its no-mistakes pipeline dead, unreachable, or timed out.
+  Load when the session-start digest reports an ordinary direct report's endpoint dead or its metadata has no window, after a stale wake, looping pane, repeated confusion, an answered-by-brief question, an unresponsive crewmate, or a failed steer, after observing a defeated Claude or Codex bypass, on a Pi worker's keyed `approval-` needs-decision or `native-prompt-` blocked line, and when a live crewmate reports its no-mistakes pipeline dead, unreachable, or timed out.
 user-invocable: false
 metadata:
   internal: true
@@ -24,6 +24,12 @@ The target window's harness is recorded as `harness=` in `state/<id>.meta`.
 After observing a Codex command-approval prompt under bypass or a Claude policy refusal of a bypass session, ask the captain for explicit approval to change the owning home's worker permission posture and relaunch the worker.
 Only after that explicit word, load `harness-adapters` and use `FM_HOME=<owning-home> bin/fm-approval-failover.sh apply <id>`; its header owns persistent configuration and guarded recovery, with no automatic detection.
 Report the saved model-reviewed remedy and actual recovery result, preserving explicit settings and work rather than changing vendor policy or answering approval or hook-trust prompts.
+
+## A Pi worker parked on a guard dialog
+
+A `needs-decision [key=approval-<id>]` line from a Pi worker means a cooperative guard extension handed firstmate one command's Run / Abort verdict: read it with `bin/fm-worker-approval.sh show <task> <id>`, decide it under the authority the brief already fixes or ask the captain in the primary conversation, then answer with `bin/fm-worker-approval.sh respond <task> <id> approve|deny --note '<reason>'`; the worker releases only that command.
+A `blocked [key=native-prompt-<hash>]` line means a guard that does not cooperate opened its own dialog in the worker pane: firstmate cannot answer it, so tell the captain which command is waiting there and that only a Run / Abort keypress in that pane continues the worker; the line closes itself when the dialog closes.
+[`docs/worker-approval-bridge.md`](../../../docs/worker-approval-bridge.md) owns both contracts; never send an unbound Enter to the pane as a substitute for the keyed answer.
 
 ## Session-start reconciliation for a dead ordinary direct report
 

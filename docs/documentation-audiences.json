@@ -89,6 +89,10 @@
       "target": "docs/verification/runtime-backends.md"
     },
     {
+      "source": "docs/worker-approval-bridge.md",
+      "target": "docs/verification/runtime-backends.md"
+    },
+    {
       "source": "docs/zellij-backend.md",
       "target": "docs/verification/runtime-backends.md"
     },
@@ -505,6 +509,10 @@
     {
       "path": "docs/usage-warner.md",
       "audience": "operator-current"
+    },
+    {
+      "path": "docs/worker-approval-bridge.md",
+      "audience": "maintainer-architecture"
     },
     {
       "path": "docs/verification/agy.md",

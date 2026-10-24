@@ -17,7 +17,7 @@ Verified on 2026-07-27 with Pi and Pi-signed 0.82.0 unless a fact gives another 
 | Model discovery | Run the selected executable as `<executable> --list-models [search]`; Pi's installed `docs/models.md` owns how built-in, extension-registered, and custom provider/model entries reach that list. |
 
 Native Codex sessions may request `ultra` through the native extension flag described by `../../../bin/fm-spawn.sh`; it is separate from Pi's thinking levels.
-Pi has no permission system, so workers are always autonomous.
+Pi has no permission system of its own, so workers are autonomous unless an operator-installed guard extension stops a flagged bash command behind its own dialog; `../../../docs/worker-approval-bridge.md` owns how a cooperative guard routes that verdict to firstmate and how a non-cooperative one is surfaced as a keyed `blocked` line.
 Fullscreen can bury steering messages by rewriting scrollback, so Firstmate avoids it when the installed CLI supports the override.
 `../../../bin/fm-spawn.sh --help` owns the executable-pinning and version-safe launch mechanics.
 
