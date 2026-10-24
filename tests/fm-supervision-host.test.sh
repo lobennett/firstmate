@@ -3204,6 +3204,36 @@ test_host_outside_the_lock_owner_stands_down() {
   pass "host: a host outside the session-lock owner stands down without arming"
 }
 
+# Failure-only evidence for the tagged case: the fixture home's own synthetic
+# host, engine, lease, queue, grant, report and acknowledgement records, each
+# bounded, with modification epochs and the liveness of the recorded pids.
+tagged_evidence() {  # <home>
+  local home=$1 f pid
+  printf -- '--- evidence at epoch %s ---\n' "$(date +%s)"
+  for f in "$home/state"/.[!.]* "$home/state"/* "$home"/host.* "$home"/engine-* "$home"/claude.err; do
+    [ -f "$f" ] || continue
+    printf '%s bytes=%s mtime=%s\n' "${f#"$home"/}" "$(wc -c < "$f" | tr -d ' ')" \
+      "$(perl -e 'print +(stat $ARGV[0])[9]' "$f")"
+  done
+  for f in state/.supervision-host state/.supervision-host.log state/.supervision-host-turn \
+    state/.supervision-host-wake state/.supervision-host-health state/.supervision-host-engine \
+    state/.supervision-host.engine-pid state/.wake-queue state/.wake-queue.seq \
+    state/.branch-eligible-owner state/.branch-eligible-rows state/.main-eligible-rows \
+    state/.watcher-down state/.watch.lock/pid state/.lock state/demo.status \
+    state/branch-outcomes.jsonl host.out host.rc engine-call.1 engine-drain.1 \
+    engine-lease.log engine-report.log engine-ack.log claude.err; do
+    [ -f "$home/$f" ] || continue
+    printf -- '--- %s (last 20 lines, 2000 bytes) ---\n' "$f"
+    tail -n 20 "$home/$f" | head -c 2000
+    printf '\n'
+  done
+  for pid in $(awk -F '\t' '$1 == "host" || $1 == "arm" { print $2 }' "$home/state/.supervision-host" 2>/dev/null) \
+    $(cat "$home/state/.watch.lock/pid" "$home/state/.supervision-host.engine-pid" 2>/dev/null); do
+    case "$pid" in *[!0-9]*|'') continue ;; esac
+    if kill -0 "$pid" 2>/dev/null; then printf 'pid %s live\n' "$pid"; else printf 'pid %s gone\n' "$pid"; fi
+  done
+}
+
 test_tagged_lock_holder_reaches_the_engine_whole() {
   local home first
   home=$(make_home tagged-holder away)
@@ -3225,7 +3255,7 @@ SH
     bash -c '"$0" park > "$FM_HOME/host.out" 2>&1; printf "%s\n" "$?" > "$FM_HOME/host.rc"' "$HOST" 2>> "$home/claude.err" &
   wait_until 150 watcher_live "$home" || fail "tagged: the host never started a watcher cycle: $(cat "$home/host.out")"
   append_status "$home" 'step one'
-  wait_until 250 handled_at_least "$home" 1 || fail "tagged: the wake was not handled: $(cat "$home/host.out"; cat "$home/state/.supervision-host.log")"
+  wait_until 250 handled_at_least "$home" 1 || fail "tagged: the wake was not handled: $(cat "$home/host.out"; cat "$home/state/.supervision-host.log"; tagged_evidence "$home")"
   first="$home/engine-call.1"
   assert_re '^holder=win:7204$' "$first" "the engine's lease holder must be the tagged session-lock holder, whole"
   assert_re '^branch win:7204 [0-9]+ live$' "$home/engine-lease.log" \
