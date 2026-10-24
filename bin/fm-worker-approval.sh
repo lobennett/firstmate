@@ -221,7 +221,10 @@ cmd_respond() {
     printf -- '--\n'
   } > "$tmp" || { rm -f "$tmp"; refuse "could not write the response record under $dir"; }
   # The response is the binding artifact; it must not appear unless the request
-  # is still pending at this instant, so re-check right before the rename.
+  # is still pending at this instant, so re-check right before the rename. The
+  # bridge can still cancel between the check and the rename; cancelled and
+  # retired outrank a response on both sides, so the check after the rename
+  # only reports that the command stays refused.
   if [ -e "$dir/$id.response" ] || [ -e "$dir/$id.cancelled" ] || [ -e "$dir/$id.retired" ]; then
     rm -f "$tmp"
     refuse "request $id was closed concurrently; nothing written"

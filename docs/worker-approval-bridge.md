@@ -32,6 +32,7 @@ The response closes the decision with a `resolved [key=approval-<id>]` line thro
 Approve releases exactly that one tool call once.
 Deny makes the guard refuse it.
 A request that is already answered, cancelled by an interrupted worker turn or a guard that stopped waiting, retired by a later worker incarnation, addressed to another task, or bound to a superseded incarnation is refused and nothing is written.
+A cancellation or retirement always outranks a response, so a worker turn interrupted while the coordinator is answering keeps the command refused and never reports it approved.
 The bridge re-checks the response's request id, task, gen, and command digest before releasing, and treats any record that does not bind as a refusal, so neither side relies on the other's check.
 A later or different command always opens its own request; one approval never carries over.
 
