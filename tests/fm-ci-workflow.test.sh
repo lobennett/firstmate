@@ -7,7 +7,8 @@
 # safeguards: PR runs supersede within one PR while main pushes are never
 # cancelled, and every CI job carries a finite hang tripwire drawn from the
 # three-tier timeout policy that docs/fm-test-portable-shards.md "Timeouts"
-# owns (fast, normal, heavy), so no job drifts back to a one-off number.
+# owns (fast, normal, heavy) plus its one named exception (portable serial
+# shard 1), so no other job drifts back to a one-off number.
 #
 # They also hold the fork opt-out: the repository variables FM_CI_SKIP_PUSH and
 # FM_CI_SKIP_MACOS let a fork skip the push run and the macOS job through a
@@ -29,7 +30,7 @@ command -v ruby >/dev/null 2>&1 \
   || fail "ruby is required to parse .github/workflows/ci.yml as YAML"
 
 # Evaluate the subset of GitHub's expression language that ci.yml uses -
-# string literals, context lookups, the status functions, !, ==, !=, &&,
+# string and integer literals, context lookups, the status functions, !, ==, !=, &&,
 # ||, and parentheses - against a simulated context hash, following the
 # documented operator precedence, the case-insensitive string comparison, and
 # the `a || b` fallback that returns the first truthy operand rather than a
@@ -70,6 +71,7 @@ class Expression
     until scanner.eos?
       next if scanner.skip(/\s+/)
       if scanner.scan(/\x27([^\x27]*)\x27/) then @tokens << [:string, scanner[1]]
+      elsif scanner.scan(/\d+\b/) then @tokens << [:number, scanner.matched.to_i]
       elsif scanner.scan(/\|\||&&|==|!=|[()!]/) then @tokens << [:operator, scanner.matched]
       elsif scanner.scan(/[A-Za-z_][\w.\-]*(?:\(\))?/) then @tokens << [:name, scanner.matched]
       else raise "unsupported expression syntax at: #{scanner.rest}"
@@ -139,8 +141,8 @@ class Expression
       return inner
     end
     kind, value = @tokens.shift
-    raise "expected an operand, got #{kind.inspect}" unless kind == :string || kind == :name
-    return value if kind == :string
+    raise "expected an operand, got #{kind.inspect}" unless %i[string number name].include?(kind)
+    return value if kind == :string || kind == :number
     if STATUS_FUNCTIONS.include?(value)
       status = @context.fetch("needs.status", "success")
       return value == "always()" || value == "#{status}()"
@@ -190,32 +192,69 @@ end
 ' "$CI_WORKFLOW" "$1" "$2" "$3"
 }
 
-job_timeout() {
-  ruby -ryaml -e '
-puts YAML.load_file(ARGV[0]).fetch("jobs").fetch(ARGV[1]).fetch("timeout-minutes", "none")
-' "$CI_WORKFLOW" "$1"
+# Print "<job><TAB><matrix entry><TAB><timeout>" for every job, resolving a
+# `${{ }}` timeout against each entry of the job's single-dimension matrix as
+# GitHub would. A job without a matrix prints "-" as its entry; a timeout
+# that is absent or not an integer prints as its inspected raw value.
+resolved_timeouts() {
+  ruby -ryaml -e "$EXPRESSION_RUBY" -e '
+YAML.load_file(ARGV[0]).fetch("jobs").each do |name, job|
+  raw = job["timeout-minutes"]
+  matrix = job.dig("strategy", "matrix")
+  entries = [nil]
+  if matrix
+    raise "#{name}: only a single-dimension matrix is resolved" unless matrix.keys.length == 1
+    key = matrix.keys.first
+    entries = matrix.fetch(key).map { |value| ["matrix.#{key}", value] }
+  end
+  entries.each do |entry|
+    timeout = raw
+    if raw.is_a?(String) && raw.strip =~ /\A\$\{\{(.*)\}\}\z/m
+      timeout = Expression.evaluate(Regexp.last_match(1), entry ? { entry[0] => entry[1] } : {})
+    end
+    label = entry ? "#{entry[0]}=#{entry[1]}" : "-"
+    puts [name, label, timeout.is_a?(Integer) ? timeout : timeout.inspect].join("\t")
+  end
+end
+' "$CI_WORKFLOW"
+}
+
+# Print every resolved timeout of one job, one per matrix entry, or only the
+# given entry's timeout; fail when nothing matches.
+job_timeout() {  # <job> [matrix.<key>=<value>]
+  resolved_timeouts | awk -F '\t' -v job="$1" -v entry="${2:-}" \
+    '$1 == job && (entry == "" || $2 == entry) { print $3; found = 1 } END { exit !found }'
 }
 
 # Tier membership is the executable inventory of the timeout policy: a new job
 # must join a tier, and a job-level value outside these tiers is exactly the
-# one-off number the policy removed.
+# one-off number the policy removed. The one named exception is the serial
+# matrix entry below; every other serial shard stays in the normal tier.
 FAST_TIER_JOBS='test-coverage invariants tests-timing-aggregate'
 NORMAL_TIER_JOBS='lint tests-portable-parallel-1 tests-portable-parallel-2 tests-portable-serial macos-stock-bash'
 HEAVY_TIER_JOBS='tests-herdr'
+EXCEPTION_JOB=tests-portable-serial
+EXCEPTION_ENTRY=matrix.shard=1
+EXCEPTION_TIMEOUT=45
 
-# Print the one timeout every listed job shares; fail on any disagreement.
+# Print the one timeout every matrix entry of the listed jobs shares, leaving
+# out only the named exception entry; fail on any disagreement.
 tier_timeout() {  # <tier> <job>...
-  local tier=$1 job first actual
+  local tier=$1 job first entry actual timeouts
   shift
   first=
   for job in "$@"; do
-    actual=$(job_timeout "$job") || fail "could not read the $job timeout"
-    case "$actual" in ''|*[!0-9]*) fail "$job ($tier tier) has no integer timeout, got $actual" ;; esac
-    if [ -z "$first" ]; then
-      first=$actual
-    elif [ "$actual" != "$first" ]; then
-      fail "$tier tier jobs must share one timeout, got $first and $actual ($job)"
-    fi
+    timeouts=$(resolved_timeouts | awk -F '\t' -v job="$job" '$1 == job { print $2 "\t" $3; found = 1 } END { exit !found }') \
+      || fail "could not read the $job timeout"
+    while IFS=$'\t' read -r entry actual; do
+      [ "$job $entry" != "$EXCEPTION_JOB $EXCEPTION_ENTRY" ] || continue
+      case "$actual" in ''|*[!0-9]*) fail "$job $entry ($tier tier) has no integer timeout, got $actual" ;; esac
+      if [ -z "$first" ]; then
+        first=$actual
+      elif [ "$actual" != "$first" ]; then
+        fail "$tier tier jobs must share one timeout, got $first and $actual ($job $entry)"
+      fi
+    done <<<"$timeouts"
   done
   printf '%s\n' "$first"
 }
@@ -260,20 +299,15 @@ test_main_pushes_are_never_cancelled() {
 }
 
 test_every_job_has_a_finite_timeout() {
-  local reported
-  reported=$(ruby -ryaml -e '
-YAML.load_file(ARGV[0]).fetch("jobs").each do |name, job|
-  timeout = job["timeout-minutes"]
-  next if timeout.is_a?(Integer) && timeout > 0
-  puts "#{name}: #{timeout.inspect}"
-end
-' "$CI_WORKFLOW") || fail "could not read job timeouts from ci.yml"
+  local all reported
+  all=$(resolved_timeouts) || fail "could not read job timeouts from ci.yml"
+  reported=$(printf '%s\n' "$all" | awk -F '\t' '$3 !~ /^[1-9][0-9]*$/ { print $1 " " $2 ": " $3 }')
   [ -z "$reported" ] || fail "these CI jobs have no finite hang tripwire:"$'\n'"$reported"
   pass "every ci.yml job carries a finite timeout"
 }
 
-# Every job sits in exactly one tier, and the workflow carries exactly three
-# distinct job-level timeouts: one per tier, no one-off numbers.
+# Every job sits in exactly one tier, and the workflow resolves to exactly
+# four distinct job-level timeouts: one per tier plus the named exception.
 test_every_job_belongs_to_exactly_one_timeout_tier() {
   local expected actual distinct
   # shellcheck disable=SC2086
@@ -283,10 +317,10 @@ test_every_job_belongs_to_exactly_one_timeout_tier() {
   actual=$(workflow_jobs | LC_ALL=C sort) || fail "could not list ci.yml jobs"
   [ "$actual" = "$expected" ] \
     || fail "ci.yml jobs and the timeout tiers disagree; every job must join one tier"$'\n'"workflow: $(printf '%s' "$actual" | tr '\n' ' ')"$'\n'"tiers: $(printf '%s' "$expected" | tr '\n' ' ')"
-  distinct=$(for job in $expected; do job_timeout "$job"; done | LC_ALL=C sort -u | wc -l | tr -d ' ')
-  [ "$distinct" = 3 ] \
-    || fail "ci.yml must carry exactly three distinct job timeouts (fast, normal, heavy), got $distinct"
-  pass "every ci.yml job belongs to one of the three timeout tiers"
+  distinct=$(resolved_timeouts | cut -f3 | LC_ALL=C sort -u | wc -l | tr -d ' ')
+  [ "$distinct" = 4 ] \
+    || fail "ci.yml must resolve to exactly four distinct job timeouts (fast, normal, heavy, serial shard 1), got $distinct"
+  pass "every ci.yml job belongs to one of the three timeout tiers or the named exception"
 }
 
 # Fast tier: seconds-long checks share one short tripwire in the 5-10 minute band.
@@ -312,6 +346,27 @@ test_normal_tier_shares_one_budget() {
   [ "$normal" = 30 ] \
     || fail "normal tier must be the single 30-minute shared budget, got $normal"
   pass "normal tier jobs share one $normal minute budget"
+}
+
+# The one named exception: portable serial shard 1 alone resolves to 45
+# minutes, between the normal and heavy tiers, while every other serial shard
+# resolves to the normal budget (held by the normal tier test above).
+test_only_serial_shard_1_gets_the_named_exception() {
+  local normal heavy actual count
+  # shellcheck disable=SC2086
+  normal=$(tier_timeout normal $NORMAL_TIER_JOBS) || exit 1
+  # shellcheck disable=SC2086
+  heavy=$(tier_timeout heavy $HEAVY_TIER_JOBS) || exit 1
+  actual=$(job_timeout "$EXCEPTION_JOB" "$EXCEPTION_ENTRY") \
+    || fail "could not resolve the $EXCEPTION_JOB $EXCEPTION_ENTRY timeout"
+  [ "$actual" = "$EXCEPTION_TIMEOUT" ] \
+    || fail "$EXCEPTION_JOB $EXCEPTION_ENTRY must resolve to $EXCEPTION_TIMEOUT minutes, got $actual"
+  [ "$actual" -gt "$normal" ] && [ "$actual" -lt "$heavy" ] \
+    || fail "the serial shard 1 exception ($actual) must sit between the normal ($normal) and heavy ($heavy) tiers"
+  count=$(resolved_timeouts | awk -F '\t' -v t="$EXCEPTION_TIMEOUT" '$3 == t' | wc -l | tr -d ' ')
+  [ "$count" = 1 ] \
+    || fail "only $EXCEPTION_JOB $EXCEPTION_ENTRY may resolve to $EXCEPTION_TIMEOUT minutes, got $count entries"
+  pass "only portable serial shard 1 resolves to the $actual minute exception"
 }
 
 # Heavy tier: Herdr alone carries a job-level last-resort backstop above the
@@ -449,4 +504,5 @@ test_every_job_has_a_finite_timeout
 test_every_job_belongs_to_exactly_one_timeout_tier
 test_fast_tier_shares_one_short_tripwire
 test_normal_tier_shares_one_budget
+test_only_serial_shard_1_gets_the_named_exception
 test_heavy_tier_keeps_a_step_tripwire_under_a_job_backstop

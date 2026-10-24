@@ -192,8 +192,9 @@ jobs:
     name: Behavior portable serial ${{ matrix.shard }}
     runs-on: ubuntu-latest
     if: ${{ !(github.event_name == 'push' && vars.FM_CI_SKIP_PUSH == '1') }}
-    # Normal tier (see the timeout policy above).
-    timeout-minutes: 30
+    # Normal tier, except the one named serial shard 1 exception (see the
+    # timeout policy above).
+    timeout-minutes: ${{ matrix.shard == 1 && 45 || 30 }}
     strategy:
       # Every shard reports so one failure never hides another shard's result.
       fail-fast: false
