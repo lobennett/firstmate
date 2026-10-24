@@ -17,8 +17,19 @@
 #      note, each drawn behind the plugin's `fm:` label rather than `firstmate-calm:`,
 #      without moving a store marker or reaching the model, and a resume shows each
 #      anchor once.
-# The project and FM_HOME are isolated; Claude keeps using its existing managed
-# authentication and one trusted temporary folder. A few Haiku turns are submitted.
+# FM_HOME is a fresh lab; Claude keeps using its existing managed authentication and
+# auto permission mode. Workspace trust belongs to the operator: the test never answers
+# a trust dialog. It runs in one named isolated fixture folder the operator has opened
+# and approved in Claude Code themselves:
+#   1. Prepare: FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PREPARE=1 \
+#        tests/fm-calm-claude-mod-live-e2e.test.sh
+#      creates the empty fixture folder and prints its path; it reports setup required.
+#   2. Approve: cd into that folder, run `claude`, review and accept its folder-trust
+#      prompt yourself, then /exit.
+#   3. Run: FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT=<that path> \
+#        bin/fm-test-run.sh tests/fm-calm-claude-mod-live-e2e.test.sh
+# Without an approved fixture the run fails as setup required, never passes or skips.
+# A few Haiku turns are submitted only when the session starts without a dialog.
 # shellcheck disable=SC2016 # the model, not this test shell, reads the prompt text
 set -u
 
@@ -31,8 +42,30 @@ MOD="$ROOT/.claude/mods/firstmate-calm"
 OPERATIONAL_INPUT="$ROOT/bin/fm-operational-input.sh"
 CLAUDE_VERSION=$(claude --version 2>/dev/null || true)
 [ -n "$CLAUDE_VERSION" ] || fail "claude is installed but reports no version"
+FIXTURE_MARKER=.fm-calm-claude-live-fixture
+FIXTURE="$(fm_test_tmpdir)/fm-calm-claude-live-approved"
+setup_required() {  # <reason>
+  printf 'not ok - setup required: %s\n' "$1" >&2
+  printf '# approve the isolated fixture: cd %q && claude, accept its folder-trust prompt yourself, /exit\n' "$FIXTURE" >&2
+  printf '# then rerun with FM_CLAUDE_CALM_LIVE_PROJECT=%q\n' "$FIXTURE" >&2
+  exit 1
+}
+if [ "${FM_CLAUDE_CALM_LIVE_PREPARE:-}" = 1 ]; then
+  if ! { mkdir -p "$FIXTURE" && : >"$FIXTURE/$FIXTURE_MARKER"; }; then
+    fail "could not prepare $FIXTURE"
+  fi
+  setup_required "prepared $FIXTURE; native proof remains unverified until the operator approves it"
+fi
+[ -n "${FM_CLAUDE_CALM_LIVE_PROJECT:-}" ] \
+  || setup_required "FM_CLAUDE_CALM_LIVE_PROJECT names no operator-approved fixture"
+PROJECT=$(cd -P -- "$FM_CLAUDE_CALM_LIVE_PROJECT" 2>/dev/null && pwd -P) \
+  || setup_required "$FM_CLAUDE_CALM_LIVE_PROJECT does not exist"
+[ "$PROJECT" = "$FIXTURE" ] && [ -f "$PROJECT/$FIXTURE_MARKER" ] \
+  || setup_required "$FM_CLAUDE_CALM_LIVE_PROJECT is not the prepared isolated fixture $FIXTURE"
+if git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  setup_required "$PROJECT is inside a git work tree, not an isolated fixture"
+fi
 LAB=$(fm_test_tmproot fm-calm-claude-live)
-PROJECT="$LAB/project"
 FM_HOME_DIR="$LAB/fmhome"
 DEBUG_LOG_OFF="$LAB/debug-off.log"
 DEBUG_LOG_ON="$LAB/debug-on.log"
@@ -56,7 +89,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$PROJECT/.claude/skills" "$FM_HOME_DIR/config"
-ln -s "$MOD" "$PROJECT/.claude/skills/firstmate-calm"
+ln -sfn "$MOD" "$PROJECT/.claude/skills/firstmate-calm"
 printf 'alpha\nbeta\ngamma\n' >"$PROJECT/notes.txt"
 printf 'on\n' >"$FM_HOME_DIR/config/calm"
 
@@ -75,7 +108,7 @@ launch() {  # <debug-log> <flag: 1|0> [claude args...]
   [ "$flag" = 1 ] && flag_env="CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1"
   tmux -L "$SOCKET" kill-session -t "$SESSION" 2>/dev/null || true
   tmux -L "$SOCKET" new-session -d -s "$SESSION" -x 160 -y 44 -c "$PROJECT" \
-    "env $(unset_inherited) $flag_env FM_HOME='$FM_HOME_DIR' CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false CLAUDE_CODE_SEND_FEEDBACK=0 claude --model haiku --dangerously-skip-permissions --settings '{\"feedbackDrafts\":\"off\"}' --debug-file '$log' $*; printf '\nCLAUDE_EXIT=%s\n' \"\$?\"; sleep 30"
+    "env $(unset_inherited) $flag_env FM_HOME='$FM_HOME_DIR' CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false CLAUDE_CODE_SEND_FEEDBACK=0 claude --model haiku --permission-mode auto --settings '{\"feedbackDrafts\":\"off\"}' --debug-file '$log' $*; printf '\nCLAUDE_EXIT=%s\n' \"\$?\"; sleep 30"
 }
 
 screen() {
@@ -100,23 +133,11 @@ dialog_open() {  # <screen text>
   return 1
 }
 
-# The folder-trust dialog opens with its cursor on "No, exit", so Enter alone would
-# end the session: move the cursor onto the trusting option first, then confirm.
-answer_trust_dialog() {  # <screen text>
-  local selected
-  case "$1" in
-    *'Yes, I trust this folder'*) : ;;
-    *) return 0 ;;
-  esac
-  selected=$(printf '%s\n' "$1" | grep -F '❯' | head -1)
-  case "$selected" in
-    *'Yes, I trust this folder'*) enter ;;
-    *) tmux -L "$SOCKET" send-keys -t "$SESSION" Down ;;
-  esac
-}
+# Security consent belongs to the operator, not this renderer test.
+# Never accept bypass, trust, or other security dialogs on the operator's behalf.
 
-# Wait until the screen shows <text> (a fixed string), answering the folder-trust
-# dialog on the way; the wait is iteration-counted so it stretches under load.
+# Wait until the screen shows <text> (a fixed string), refusing security dialogs;
+# the wait is iteration-counted so it stretches under load.
 wait_screen() {  # <text> <what> [iterations]
   local text=$1 what=$2 limit=${3:-400} i=0 shot
   while [ "$i" -lt "$limit" ]; do
@@ -128,7 +149,8 @@ wait_screen() {  # <text> <what> [iterations]
         ;;
     esac
     if dialog_open "$shot"; then
-      answer_trust_dialog "$shot"
+      printf '%s\n' "$shot" >&2
+      setup_required "Claude Code $CLAUDE_VERSION still asks for confirmation in $PROJECT; no dialog was accepted"
     else
       case "$shot" in
         *"$text"*) return 0 ;;
@@ -439,6 +461,40 @@ enter
 sleep 1
 pass "Claude Code $CLAUDE_VERSION resumes the transcript with Calm's hidden rows still hidden and the preference intact"
 
+# Resting State: use the real command and renderer, then verify settle/disable.
+launch "$LAB/debug-resting-state.log" 1
+wait_idle
+send '/resting-state on'
+enter
+sleep 1
+[ "$(cat "$FM_HOME_DIR/config/calm-presentation")" = resting-state ] || fail "Claude did not save the explicit wave choice"
+send "$PROMPT"
+enter
+wave_seen=0
+i=0
+while [ "$i" -lt 200 ]; do
+  screen >"$LAB/wave.txt"
+  if node -e 'process.exit(/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8")) ? 0 : 1)' "$LAB/wave.txt"; then
+    wave_seen=1
+    break
+  fi
+  sleep 0.1
+  i=$((i + 1))
+done
+[ "$wave_seen" = 1 ] || fail "Claude Code $CLAUDE_VERSION did not draw Resting State"
+case "$(screen)" in *"$HULL"*) fail "Claude drew the boat and wave together" ;; esac
+wait_settled 'the Resting State turn'
+screen >"$LAB/wave.txt"
+node -e 'if (/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8"))) throw Error("wave remained after settle")' "$LAB/wave.txt" || fail "Claude wave did not clear"
+send '/resting-state off'
+enter
+sleep 1
+[ "$(cat "$FM_HOME_DIR/config/calm")" = off ] || fail "Claude Resting State off did not restore stock presentation"
+send '/exit'
+enter
+sleep 1
+pass "Claude Code $CLAUDE_VERSION invokes Resting State explicitly, draws one wave instead of the boat, clears it on settle, and persists off"
+
 # --- 4. Supervision notes: shown with Calm off, from the store the host writes ----
 STATE_DIR="$FM_HOME_DIR/state"
 DEBUG_LOG_NOTES="$LAB/debug-notes.log"
@@ -486,7 +542,11 @@ sleep 2
 send '/exit'
 enter
 sleep 2
-notes_session=$(grep -rlF 'GREEN_HARBOR_LANTERN' "$HOME/.claude/projects/"*"$(basename "$LAB" | tr -c 'A-Za-z0-9\n' -)"* 2>/dev/null | head -n 1)
+# The approved fixture keeps earlier runs' transcripts, so only the newest one counts.
+# Claude Code names transcripts by UUID, so ls -t mtime ordering is safe here.
+# shellcheck disable=SC2012
+notes_session=$(ls -t "$HOME/.claude/projects/"*"$(basename "$PROJECT" | tr -c 'A-Za-z0-9\n' -)"*/*.jsonl 2>/dev/null | head -n 1)
+grep -qF 'GREEN_HARBOR_LANTERN' "$notes_session" 2>/dev/null || notes_session=
 [ -n "$notes_session" ] || fail "could not find the session transcript Claude Code stored for the notes turn"
 if jq -e 'select(.type == "assistant") | .message.content | tostring | test("LIVE_")' "$notes_session" >/dev/null 2>&1; then
   fail "the model quoted a supervision note, so the notes reached its context: $notes_session"

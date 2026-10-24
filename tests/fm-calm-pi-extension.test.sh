@@ -193,6 +193,8 @@ test_home_resolution() {
   record_pi_version_evidence "$version" "Pi calm compatibility assumptions"
 
   fixture="$TMP_ROOT/home-resolution"
+  mkdir -p "$fixture/project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/project/.pi/extensions/lib/"
   mkdir -p \
     "$fixture/project/.pi/extensions/lib" \
     "$fixture/project/node_modules/@earendil-works" \
@@ -320,6 +322,8 @@ test_pi_compat_degraded_adapter() {
   fi
 
   fixture="$TMP_ROOT/degraded-adapter"
+  mkdir -p "$fixture/project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/project/.pi/extensions/lib/"
   mkdir -p \
     "$fixture/project/.pi/extensions/lib" \
     "$fixture/project/node_modules/@earendil-works"
@@ -423,6 +427,8 @@ test_pi_compat_missing_adapter_exports() {
   fi
 
   fixture="$TMP_ROOT/missing-adapter-exports"
+  mkdir -p "$fixture/project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/project/.pi/extensions/lib/"
   mkdir -p \
     "$fixture/project/.pi/extensions/lib" \
     "$fixture/project/node_modules/@earendil-works/pi-coding-agent"
@@ -800,6 +806,8 @@ test_builtin_gate_load_time() {
   fi
 
   fixture="$TMP_ROOT/gate-load-time"
+  mkdir -p "$fixture/project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/project/.pi/extensions/lib/"
   mkdir -p \
     "$fixture/project/.pi/extensions/lib" \
     "$fixture/project/node_modules/@earendil-works" \
@@ -890,6 +898,8 @@ test_calm_activation_collision_and_regression_bound() {
   fi
 
   fixture="$TMP_ROOT/activation-collision"
+  mkdir -p "$fixture/project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/project/.pi/extensions/lib/"
   mkdir -p \
     "$fixture/project/.pi/extensions/lib" \
     "$fixture/project/node_modules/@earendil-works" \
@@ -1110,6 +1120,8 @@ test_rendering_and_session_lifecycle() {
   record_pi_version_evidence "$version" "Pi calm compatibility assumptions"
 
   fixture="$TMP_ROOT/renderer"
+  mkdir -p "$fixture/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/lib/"
   mkdir -p "$fixture/home" "$fixture/lib" "$fixture/node_modules/@earendil-works"
   cp "$EXT" "$fixture/fm-calm.ts"
   cp "$ASSISTANT_LAYOUT" "$fixture/lib/fm-calm-assistant-layout.ts"
@@ -1835,6 +1847,8 @@ test_calm_mid_turn_working_notes() {
   record_pi_version_evidence "$version" "Pi calm mid-turn presentation"
 
   fixture="$TMP_ROOT/calm-mid-turn"
+  mkdir -p "$fixture/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/lib/"
   mkdir -p "$fixture/home" "$fixture/lib" "$fixture/node_modules/@earendil-works"
   cp "$EXT" "$fixture/fm-calm.ts"
   cp "$ASSISTANT_LAYOUT" "$fixture/lib/fm-calm-assistant-layout.ts"
@@ -2141,6 +2155,8 @@ test_operational_followup_turn_e2e() {
   home="$TMP_ROOT/followup-home"
   config="$TMP_ROOT/followup-config"
   sessions="$TMP_ROOT/followup-sessions"
+  mkdir -p "$project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$project/.pi/extensions/lib/"
   mkdir -p "$project/.pi/extensions/lib" "$home/config" "$config" "$sessions"
   fm_git_init_commit "$project"
   cp "$EXT" "$project/.pi/extensions/fm-calm.ts"
@@ -2510,6 +2526,8 @@ test_queued_operational_escape_e2e() {
   home="$TMP_ROOT/queued-escape-home"
   config="$TMP_ROOT/queued-escape-config"
   sessions="$TMP_ROOT/queued-escape-sessions"
+  mkdir -p "$project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$project/.pi/extensions/lib/"
   mkdir -p "$project/.pi/extensions/lib" "$home/config" "$config" "$sessions"
   fm_git_init_commit "$project"
   cp "$EXT" "$project/.pi/extensions/fm-calm.ts"
@@ -2718,6 +2736,8 @@ test_hidden_block_geometry_e2e() {
   home="$TMP_ROOT/geometry-home"
   config="$TMP_ROOT/geometry-config"
   sessions="$TMP_ROOT/geometry-sessions"
+  mkdir -p "$project/.pi/extensions/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$project/.pi/extensions/lib/"
   snapshot="$TMP_ROOT/geometry-calm-on.txt"
   expanded_snapshot="$TMP_ROOT/geometry-expanded.txt"
   calm_off_snapshot="$TMP_ROOT/geometry-calm-off.txt"
@@ -2980,6 +3000,8 @@ test_working_ship_geometry_and_lifecycle() {
   [ -f "$standalone_ship" ] || standalone_ship=
 
   fixture="$TMP_ROOT/working-ship"
+  mkdir -p "$fixture/lib"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$fixture/lib/"
   mkdir -p "$fixture/home" "$fixture/lib" "$fixture/node_modules/@earendil-works"
   cp "$EXT" "$fixture/fm-calm.ts"
   cp "$ASSISTANT_LAYOUT" "$fixture/lib/fm-calm-assistant-layout.ts"
@@ -3581,6 +3603,7 @@ globalThis.clearInterval = (timer) => {
 const sessionWrites = [];
 const handlers = new Map();
 let calmCommand;
+let restingStateCommand;
 const pi = {
   events: { emit() {}, on() {} },
   on(event, handler) {
@@ -3590,6 +3613,7 @@ const pi = {
   },
   registerCommand(name, command) {
     if (name === "calm") calmCommand = command;
+    if (name === "resting-state") restingStateCommand = command;
   },
   registerEntryRenderer() {},
   registerTool() {},
@@ -3912,6 +3936,43 @@ check(
 );
 ui.setWidget(standaloneSlot, undefined);
 
+// --- Resting State shares that exact owner, slot, lifecycle and visibility policy ---
+await fire("agent_settled");
+await restingStateCommand.handler("on", ctx);
+check(liveTimers === 0 && ui.widgets.size === 0, "idle Resting State started motion");
+await fire("agent_start");
+check(liveTimers === 1 && ui.widgets.size === 1, "Resting State duplicated the working timer or row");
+let waveFrame = shipWidget().render(60);
+check(waveFrame.length === 2 && /^[ ○\u2800-\u28ff]+$/.test(waveFrame.map(strip).join("")), "wave was not a two-row braille curve");
+for (const width of [0, 1, 2, 3, 8, 12, 64, 180]) {
+  const rows = shipWidget().render(width);
+  check(rows.every((row) => visibleWidth(row) === width), `Resting State overflowed ${width}`);
+  for (const row of rows) for (const glyph of strip(row)) check(visibleWidth(glyph) === 1, "a wave glyph is not one cell");
+}
+waveFrame = shipWidget().render(60);
+await fire("agent_settled");
+check(liveTimers === 0 && ui.widgets.size === 0, "settled wave left a timer or row");
+await fire("agent_start");
+check(JSON.stringify(shipWidget().render(60)) === JSON.stringify(waveFrame), "hidden wave advanced while stopped");
+await restingStateCommand.handler("boat", ctx);
+check(liveTimers === 1 && shipWidget().render(60).length === 2, "switching back did not replace the single owner with the boat");
+await restingStateCommand.handler("on", ctx);
+check(liveTimers === 1 && /[⠀-⣿]/.test(shipWidget().render(60).map(strip).join("")), "switching to wave duplicated a timer");
+await restingStateCommand.handler("off", ctx);
+check(liveTimers === 0 && ui.widgets.size === 0 && ui.workingVisible.at(-1) === true, "wave off did not restore stock working");
+await restingStateCommand.handler("invalid", ctx);
+check(liveTimers === 0, "invalid argument enabled motion");
+await calmCommand.handler("", ctx);
+check(/[⠀-⣿]/.test(shipWidget().render(60).map(strip).join("")), "legacy Calm toggle forgot the explicit wave choice");
+await fire("session_shutdown");
+check(liveTimers === 0 && ui.widgets.size === 0, "shutdown leaked wave resources");
+await fire("session_start", { reason: "reload" });
+check(liveTimers === 0, "reload started an idle wave timer");
+await fire("agent_start");
+check(liveTimers === 1 && /[⠀-⣿]/.test(shipWidget().render(60).map(strip).join("")), "reload forgot the saved wave or duplicated its timer");
+await fire("agent_settled", { reason: "error" });
+check(liveTimers === 0 && ui.widgets.size === 0, "failed wave run leaked resources");
+
 // --- The visual-only widget never touches session, transcript, or export data ------
 check(
   sessionWrites.length === 0,
@@ -4068,6 +4129,7 @@ test_interactive_terminal_e2e() {
   restarted_snapshot="$TMP_ROOT/restarted.txt"
   resumed_restored_snapshot="$TMP_ROOT/resumed-restored.txt"
   mkdir -p "$project/.pi/extensions/lib" "$project/bin" "$project/state" "$config" "$home/config"
+  cp "$ROOT/.pi/extensions/lib/fm-calm-resting-state.ts" "$project/.pi/extensions/lib/"
   fm_git_init_commit "$project"
   : > "$project/AGENTS.md"
   cp "$EXT" "$project/.pi/extensions/fm-calm.ts"
@@ -4929,6 +4991,55 @@ JS
   # No blank-row residue: settling returns to the same layout Calm off started from.
   tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$boat_cleared_snapshot"
   assert_not_contains "$(cat "$boat_cleared_snapshot")" '╲▁▁▁╱' "a settled run left the working ship on screen"
+
+  # The alternate visual is a real command in the same live Pi, not a prompt skill.
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/resting-state on"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" M-s
+  active_screen_wait=0
+  while [ "$active_screen_wait" -lt 200 ]; do
+    [ "$(cat "$home/config/calm-presentation" 2>/dev/null)" = resting-state ] && break
+    sleep 0.05
+    active_screen_wait=$((active_screen_wait + 1))
+  done
+  [ "$(cat "$home/config/calm-presentation")" = resting-state ] || fail "Pi did not save the explicit Resting State choice"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/calm-boat-e2e"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" M-s
+  active_screen_wait=0
+  while [ "$active_screen_wait" -lt 200 ]; do
+    tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$working_snapshot"
+    node -e 'process.exit(/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8")) ? 0 : 1)' "$working_snapshot" && break
+    sleep 0.05
+    active_screen_wait=$((active_screen_wait + 1))
+  done
+  node -e 'if (!/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8"))) throw Error("no wave in real Pi")' "$working_snapshot" || fail "Pi Resting State did not draw"
+  assert_not_contains "$(cat "$working_snapshot")" '╲▁▁▁╱' "Pi drew both the wave and boat"
+  assert_not_contains "$(cat "$working_snapshot")" 'Working' "Pi drew both the wave and stock working row"
+  local wave_first_snapshot="$TMP_ROOT/resting-state-first.txt"
+  cp "$working_snapshot" "$wave_first_snapshot"
+  sleep 1
+  tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$working_snapshot"
+  node -e 'const fs=require("node:fs"); const wave=p=>fs.readFileSync(p,"utf8").split("\n").filter(r=>/[⠀-⣿]/u.test(r)).join("\n"); if(wave(process.argv[1])===wave(process.argv[2])) throw Error("wave did not drift")' "$wave_first_snapshot" "$working_snapshot" || fail "Pi wave did not move"
+  tmux -L "$TMUX_SOCKET" resize-window -t "$TMUX_SESSION" -x 12 -y 44
+  sleep 0.5
+  tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$working_snapshot"
+  node -e 'const rows=require("node:fs").readFileSync(process.argv[1],"utf8").split("\n").filter(r=>/[⠀-⣿]/u.test(r)); if(rows.length < 1 || rows.length > 2 || rows.some(r=>[...r].length > 12)) throw Error("narrow wave wrapped or disappeared")' "$working_snapshot" || fail "narrow Pi wave layout"
+  tmux -L "$TMUX_SOCKET" resize-window -t "$TMUX_SESSION" -x 180 -y 44
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" Escape
+  sleep 0.5
+  tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$working_snapshot"
+  node -e 'if (/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8"))) throw Error("aborted wave remained")' "$working_snapshot" || fail "Pi wave did not clear on abort"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/calm-working-e2e"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" M-s
+  sleep 2.5
+  tmux -L "$TMUX_SOCKET" capture-pane -p -t "$TMUX_SESSION" >"$working_snapshot"
+  node -e 'if (/[⠀-⣿]/u.test(require("node:fs").readFileSync(process.argv[1],"utf8"))) throw Error("settled wave remained")' "$working_snapshot" || fail "Pi wave did not clear on settle"
+  pass "Pi Resting State command draws one moving two-row wave, reflows without wrapping at 12 columns, clears on abort and settle, and retains Calm visibility and input behavior"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/resting-state boat"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" M-s
+  sleep 0.3
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/calm"
+  tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" M-s
+  sleep 0.3
 
   # Restore Calm for the persistence restart below.
   tmux -L "$TMUX_SOCKET" send-keys -t "$TMUX_SESSION" -l "/calm"

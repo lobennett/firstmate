@@ -49,6 +49,8 @@ export type World = {
 export type WorldOptions = {
   /** The stored preference text; absent means no file. */
   preference?: string;
+  presentation?: string;
+  reducedMotion?: boolean;
   /** Extra environment beside FM_HOME; pass `{}` with `home: undefined` to unset FM_HOME. */
   env?: Record<string, string>;
   /** Function-hooks opt-in value; omitted options default to the active value `1`. */
@@ -78,6 +80,7 @@ export function world(on: On, options: WorldOptions = {}): World {
   const files = new Map<string, string>();
   const mtimes = new Map<string, number>();
   if (options.preference !== undefined) files.set(PREFERENCE, options.preference);
+  if (options.presentation !== undefined) files.set(`${PREFERENCE}-presentation`, options.presentation);
   const journal: Journal = {
     commands: [],
     toasts: [],
@@ -90,6 +93,7 @@ export function world(on: On, options: WorldOptions = {}): World {
     logs: [],
   };
   let theme: unknown = "theme" in options ? options.theme : "dark";
+  let reducedMotion = options.reducedMotion === true;
   let blitDenial: string | undefined;
   let writeFailure: string | undefined;
 
@@ -142,6 +146,8 @@ export function world(on: On, options: WorldOptions = {}): World {
     journal.configLists += 1;
     return {
       value: [
+        { key: "prefersReducedMotion", label: "Reduced motion", kind: "boolean", value: reducedMotion,
+          provider: { plugin: "engine", tier: "core" }, isLocked: false },
         {
           key: "theme",
           label: "Theme",
@@ -157,6 +163,7 @@ export function world(on: On, options: WorldOptions = {}): World {
   // The menu writes the row: the value lands for later listings and the hook above sees it.
   on("config.set", async (_$, e) => {
     if (e.key === "theme") theme = e.value;
+    if (e.key === "prefersReducedMotion") reducedMotion = e.value === true;
     return { value: e.value };
   });
   on("ui.render", async (_$, e) => {

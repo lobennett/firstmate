@@ -1,6 +1,7 @@
-# Calm mode
+# Calm and Resting State
 
 Calm is Firstmate's conversation-only transcript presentation toggle.
+Resting State is Labmate's optional wave visual using that same presentation owner, visibility policy, and input adapters.
 This page is for operators who turn Calm on and need to know what it hides and keeps visible on Pi and on Claude Code, and which file owns each part of that behavior.
 
 ## Harness support and default
@@ -13,6 +14,49 @@ This page is for operators who turn Calm on and need to know what it hides and k
 Calm is off by default.
 The last `/calm` choice persists for the effective Firstmate home across session starts and resumes on either harness.
 Both harnesses keep that choice in the one shared preference file that [`configuration.md`](configuration.md#calm-preference-configcalm) owns.
+
+## Resting State
+
+Run `/resting-state` explicitly to select the slow wave and enable Calm's quiet presentation.
+It does not replace an existing boat choice until you ask for it.
+The command is discoverable in Pi's command list and, with the exact function-hooks opt-in below, Claude Code's command list.
+It is executable presentation code, not a prompt skill.
+
+| Command | Effect |
+| --- | --- |
+| `/resting-state` | Select the wave and turn on; if the wave is already on, turn off. |
+| `/resting-state on` | Select the wave and turn on, including when the boat is on. |
+| `/resting-state off` | Turn Calm presentation off, restoring ordinary rows and the stock working indicator; retain the selected visual. |
+| `/resting-state boat` | Select the original boat and turn Calm on. |
+| `/calm` | Keep its legacy toggle behavior, using whichever visual you explicitly selected last; arguments remain ignored. |
+
+Other `/resting-state` arguments show usage without changing anything.
+Both visual choices use the same [home-local preferences](configuration.md#calm-preference-configcalm).
+An absent, unreadable, or unknown visual preference falls back to the original boat; `config/calm` still controls whether either visual is enabled.
+Nothing installs or enables itself in an existing home.
+
+The wave is one small, centered two-row curve, at most 48 terminal cells wide, in a steady muted blue-gray palette for light and dark terminals.
+A slower harmonic gently changes its shape without changing brightness, and there is no floating dot or marker.
+It is an illustration inspired by resting-state activity, not real brain data, an EEG display, a neurological measurement, or a therapeutic claim.
+A 20-cell swell drifts one cell every 880ms, using Calm's existing 220ms drawing cadence rather than blinking at alpha/EEG frequencies.
+One swell takes 17.6 seconds; the slower shape motion completes a cycle in 35.2 seconds.
+There are no flashes, brightness pulses, sounds, popups, or additional status rows.
+The same one-cell Unicode curve clips safely even at one terminal column.
+
+![Actual Resting State renderer frames in dark, light, and narrow layouts](assets/resting-state-preview.png)
+
+Like the boat, the wave exists only while work runs, clears on settle, abort, error, or disable, and freezes while hidden rather than advancing by elapsed wall time.
+Reload disposes the old drawing and its timer.
+There is one working-row owner and scheduler, never a boat and wave together or a second input adapter.
+When Claude Code exposes its existing `prefersReducedMotion` setting through the plugin API, the wave uses it as a static working indicator; Pi exposes no equivalent extension setting, so no new settings framework is added.
+Turning the presentation off always restores the stock indicator, and non-terminal surfaces retain their existing behavior.
+
+All the preservation and supported limits on this page apply unchanged.
+Substantive assistant text, final results, errors, and decisions retain their existing visibility and delivery behavior; every message remains in context, storage, and exports.
+Changing the visual never pauses work, enters `/quiet` or `/afk`, changes model routing, handles a decision, or touches supervision queues.
+Claude Code without `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` remains a complete no-op, with neither command registered.
+Other tools gain no new native integration.
+Resting State is covered by real Claude plugin-host tests, but its [native Claude TUI proof remains unverified](verification/runtime-backends.md#resting-state-working-presentation) because workspace trust requires an operator's explicit confirmation; the live test never accepts that dialog.
 
 ## Shared preservation rule for assistant text
 
@@ -160,7 +204,7 @@ How Calm handles that shared slot depends on whether Calm was already on when th
 - `.claude/mods/firstmate-calm/lib/fm-calm-preservation.ts` owns the shared substantive mid-turn text rule, which Pi imports through its tracked symlink.
 - `.pi/extensions/lib/fm-calm-operational-user-layout.ts` owns the zero-height operational-user row adapter.
 - `.pi/extensions/lib/fm-calm-pending-operational-layout.ts` owns the queued-row adapter and its session capability check.
-- `.pi/extensions/lib/fm-calm-working-ship.ts` owns Pi's animated working presentation over the sprite geometry both harnesses share in `.claude/mods/firstmate-calm/lib/fm-calm-working-ship-sprite.ts`.
+- `.pi/extensions/lib/fm-calm-working-ship.ts` owns Pi's animated working presentation over the boat geometry both harnesses share in `.claude/mods/firstmate-calm/lib/fm-calm-working-ship-sprite.ts` and the optional wave and selection helpers in `.claude/mods/firstmate-calm/lib/fm-calm-resting-state.ts`.
 
 ### Pi regression entry points
 
@@ -306,5 +350,7 @@ Evidence for 2.1.280 and the record-backed doorbell is also in its [2026-09-25 r
 ```sh
 tests/fm-calm-claude-mod.test.sh
 tests/fm-calm-claude-mod-plugin.test.sh
-FM_CLAUDE_CALM_LIVE_E2E=1 tests/fm-calm-claude-mod-live-e2e.test.sh
+FM_CLAUDE_CALM_LIVE_E2E=1 FM_CLAUDE_CALM_LIVE_PROJECT=<approved fixture> tests/fm-calm-claude-mod-live-e2e.test.sh
 ```
+
+The live guard runs only against an operator-approved isolated fixture; [its prepare, approve, and run procedure](verification/runtime-backends.md#resting-state-working-presentation) owns that setup.

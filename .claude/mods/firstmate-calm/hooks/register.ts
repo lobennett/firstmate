@@ -54,6 +54,14 @@ import {
   type CalmShipRasterPalette,
 } from "../lib/fm-calm-ship-raster.ts";
 import {
+  calmWorkingPresentationPath,
+  createRestingStateWave,
+  parseCalmWorkingPresentation,
+  RESTING_STATE_PALETTES,
+  restingStateChoice,
+  type CalmWorkingPresentation,
+} from "../lib/fm-calm-resting-state.ts";
+import {
   calmPreferencePath,
   parseCalmPreference,
   classifyRestoredTranscript,
@@ -83,6 +91,8 @@ const CALM_COMMAND = "calm";
 // One module environment holds one Calm state; a hot reload starts a fresh one, the
 // same as a new Pi extension lifetime.
 let calm = false;
+let presentation: CalmWorkingPresentation = "boat";
+let reducedMotion = false;
 let preferencePath: string | undefined;
 let activation: Promise<boolean> | undefined;
 let loading: Promise<void> | undefined;
@@ -93,7 +103,9 @@ const finalReplies = new Set<string>();
 // but pruned after seven days, so every invalidation drops the cache and rechecks.
 const doorbellVerdicts = new Map<string, Promise<boolean>>();
 const sprite = createCalmWorkingShipSprite();
+const wave = createRestingStateWave();
 let palette: CalmShipRasterPalette = CALM_SHIP_RASTER_PALETTES.light;
+let waveColor: number = RESTING_STATE_PALETTES.light;
 // Every Spinner site currently drawing the boat, by its requestId, with the mounted
 // Raster size a blit must repeat exactly.
 const sites = new Map<string, { columns: number; rows: number }>();
@@ -148,13 +160,13 @@ async function readText($: EngineInterface, path: string): Promise<string | unde
   }
 }
 
-/** The `theme` setting's current value, or undefined when the menu cannot be read. */
-async function readTheme($: EngineInterface): Promise<unknown> {
-  try {
-    return (await $.config.list()).find((row) => row.key === "theme")?.value;
-  } catch {
-    return undefined;
-  }
+/** Reuse Claude's existing reduced-motion preference; do not write global settings. */
+async function readDisplayPreferences($: EngineInterface): Promise<void> {
+  const rows = await $.config.list().catch(() => []);
+  const family = calmShipPaletteFamily(rows.find((row) => row.key === "theme")?.value);
+  palette = CALM_SHIP_RASTER_PALETTES[family];
+  waveColor = RESTING_STATE_PALETTES[family];
+  reducedMotion = rows.find((row) => row.key === "prefersReducedMotion")?.value === true;
 }
 
 async function load($: EngineInterface): Promise<void> {
@@ -167,18 +179,14 @@ async function load($: EngineInterface): Promise<void> {
     $.plugin.root,
   );
   calm = parseCalmPreference(await readText($, preferencePath));
-  palette = CALM_SHIP_RASTER_PALETTES[calmShipPaletteFamily(await readTheme($))];
+  presentation = parseCalmWorkingPresentation(await readText($, calmWorkingPresentationPath(preferencePath)));
+  await readDisplayPreferences($);
   try {
     const restored = classifyRestoredTranscript(await $.session.messages());
     for (const note of restored.workingNotes) workingNotes.add(note);
     for (const reply of restored.finalReplies) finalReplies.add(reply);
   } catch {
     // A transcript that cannot be read leaves restored narration visible; nothing else changes.
-  }
-  if (ticker === undefined) {
-    ticker = $.clock.every(CALM_WORKING_SHIP_TICK_MS, () => {
-      void repaintShip($);
-    });
   }
   invalidateDrawings($);
 }
@@ -190,7 +198,9 @@ function ensureLoaded($: EngineInterface): Promise<void> {
 
 async function resetSession($: EngineInterface): Promise<void> {
   if (loading !== undefined) await loading.catch(() => undefined);
+  stopTicker();
   calm = false;
+  presentation = "boat";
   preferencePath = undefined;
   loading = undefined;
   workingNotes.clear();
@@ -198,6 +208,7 @@ async function resetSession($: EngineInterface): Promise<void> {
   doorbellVerdicts.clear();
   sites.clear();
   sprite.reset();
+  wave.reset();
   palette = CALM_SHIP_RASTER_PALETTES.light;
   await ensureLoaded($);
 }
@@ -208,12 +219,32 @@ function invalidateDrawings($: EngineInterface): void {
   $.ui.invalidate("ui.render");
 }
 
-/** One scheduler tick: advance the sprite, then repaint every mounted boat in place. */
+function stopTicker(): void {
+  ticker?.cancel();
+  ticker = undefined;
+}
+
+function ensureTicker($: EngineInterface): void {
+  if (ticker !== undefined || (presentation === "resting-state" && reducedMotion)) return;
+  ticker = $.clock.every(CALM_WORKING_SHIP_TICK_MS, () => { void repaintShip($); });
+}
+
+function workingFrame(columns: number, remember = true) {
+  return presentation === "resting-state" ? wave.frame(columns, remember) : sprite.frame(columns);
+}
+
+function workingPalette(): CalmShipRasterPalette {
+  return presentation === "resting-state" ? { ...palette, water: waveColor } : palette;
+}
+
+/** One scheduler for the selected visual; a denied site freezes hidden motion. */
 async function repaintShip($: EngineInterface): Promise<void> {
-  if (!calm || sites.size === 0) return;
-  sprite.tick();
+  if (!calm || sites.size === 0) { stopTicker(); return; }
+  if (presentation === "resting-state") wave.tick();
+  else sprite.tick();
+  let shown = false;
   for (const [requestId, site] of sites) {
-    const packed = packCalmShipRasterCells(sprite.frame(site.columns), site.columns, palette);
+    const packed = packCalmShipRasterCells(workingFrame(site.columns, false), site.columns, workingPalette());
     const result = await $.ui.blit({
       requestId,
       key: CALM_SHIP_RASTER_KEY,
@@ -224,6 +255,12 @@ async function repaintShip($: EngineInterface): Promise<void> {
     // A denied blit means the site no longer shows this plugin's Raster (the turn
     // settled, or a resize redrew it); forget it until the next Spinner drawing.
     if (result.deny !== undefined && sites.get(requestId) === site) sites.delete(requestId);
+    else if (result.deny === undefined) shown = true;
+  }
+  if (shown && presentation === "resting-state") wave.markRendered();
+  if (sites.size === 0) {
+    wave.restoreLastRendered();
+    stopTicker();
   }
 }
 
@@ -378,6 +415,10 @@ export const register: Register = (on) => {
       name: CALM_COMMAND,
       description: "Toggle Firstmate's Calm transcript presentation and working ship.",
     });
+    await $.command.register({
+      name: "resting-state",
+      description: "Resting State wave and Calm visibility: [on|off|boat]; no argument toggles the wave.",
+    });
     return next(e);
   });
 
@@ -395,11 +436,50 @@ export const register: Register = (on) => {
       return {};
     }
     calm = active;
-    if (!calm) sites.clear();
+    if (!calm) { sites.clear(); stopTicker(); wave.restoreLastRendered(); }
     invalidateDrawings($);
     $.ui.toast(active ? "Calm on" : "Calm off");
     // No `text`: the toggle leaves no output row in the transcript, as on Pi.
     return {};
+  });
+
+  on("command.run", { command: "resting-state" }, async ($, e, next) => {
+    if (!(await isActivated($))) return next(e);
+    await ensureLoaded($);
+    const choice = restingStateChoice(e.args, calm, presentation);
+    if (!choice) { $.ui.toast("Usage: /resting-state [on|off|boat]"); return {}; }
+    const previous = presentation;
+    const visualPath = calmWorkingPresentationPath(preferencePath ?? "");
+    try {
+      if (choice.presentation !== previous) await $.fs.write(visualPath, `${choice.presentation}\n`);
+      await $.fs.write(preferencePath ?? "", serializeCalmPreference(choice.active));
+    } catch (error) {
+      if (choice.presentation !== previous) {
+        await $.fs.write(visualPath, `${previous}\n`).catch(() => undefined);
+      }
+      $.ui.toast(`Resting State unchanged: could not save preferences (${String(error)})`);
+      return {};
+    }
+    sites.clear();
+    stopTicker();
+    wave.restoreLastRendered();
+    sprite.restoreLastRendered();
+    presentation = choice.presentation;
+    calm = choice.active;
+    invalidateDrawings($);
+    $.ui.toast(calm ? (presentation === "resting-state" ? "Resting State on" : "Calm boat on") : "Calm off");
+    return {};
+  });
+
+  on("config.set", { key: "prefersReducedMotion" }, async ($, e, next) => {
+    if (!(await isActivated($))) return next(e);
+    const result = await next(e);
+    if (result.deny === undefined) {
+      reducedMotion = result.value === true;
+      stopTicker();
+      if (calm) invalidateDrawings($);
+    }
+    return result;
   });
 
   // Follow a theme change: the next drawing and every later blit use the new family.
@@ -410,6 +490,7 @@ export const register: Register = (on) => {
       const chosen = CALM_SHIP_RASTER_PALETTES[calmShipPaletteFamily(result.value)];
       if (chosen !== palette) {
         palette = chosen;
+        waveColor = RESTING_STATE_PALETTES[calmShipPaletteFamily(result.value)];
         if (calm) invalidateDrawings($);
       }
     }
@@ -461,8 +542,9 @@ export const register: Register = (on) => {
       return next(e);
     }
     const columns = calmShipRasterColumns(e.viewport?.columns);
-    const packed = packCalmShipRasterCells(sprite.frame(columns), columns, palette);
+    const packed = packCalmShipRasterCells(workingFrame(columns), columns, workingPalette());
     sites.set(e.requestId, { columns, rows: packed.rows });
+    ensureTicker($);
     const { Box, Raster } = $.ui.resolve(e);
     return Box({
       flexDirection: "column",

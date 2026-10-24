@@ -40,7 +40,9 @@ FAKE_CLAUDE="$FAKEBIN/claude"
 #   return      handle, but the captain returns (the record is archived) before
 #               the turn ends
 #   return-silent the same, but the routine outcome is silent
-#   return-fail the same, then exit nonzero without a result
+#   return-fail the same, then exit nonzero without a result; when the test
+#               made a $FM_HOME/stub-release FIFO, it first blocks reading it
+#               just before the return, as held does
 #   return-fail-silent the same, but the routine outcome is silent
 #   return-many handle, then seed more than 1,000 same-turn receipts after an
 #               early visible outcome
@@ -140,10 +142,14 @@ case "$mode" in
       ;;
     esac
     [ "$mode" = hold-lease ] || "$FM_REPO/bin/fm-lease.sh" release "$task" >> "$FM_HOME/engine-lease.log" 2>&1
+    if [ "$mode" = return-fail ] && [ -p "$FM_HOME/stub-release" ]; then
+      printf 'ready\n' > "$FM_HOME/stub-ready"
+      read -r _ < "$FM_HOME/stub-release"
+    fi
     case "$mode" in
       return|return-silent|return-fail|return-fail-silent|return-many|return-lookup-fail) "$FM_REPO/bin/fm-afk-contract.sh" archive >> "$FM_HOME/engine-return.log" 2>&1 ;;
     esac
-    case "$mode" in return-fail|return-fail-silent) exit 3 ;; esac
+    case "$mode" in return-fail|return-fail-silent) : > "$FM_HOME/stub-returned"; exit 3 ;; esac
     [ "$mode" != return-first ] || sleep "$FM_TEST_STUB_MAX_BLOCK_SECONDS"
     [ "$mode" != emptyresult ] || { printf '{}\n'; exit 0; }
     if [ "$mode" = hold-marker ]; then
@@ -2518,14 +2524,24 @@ test_report_without_acknowledgement_hands_the_wake_to_main() {
   pass "host: a turn that reports but leaves its granted rows queued hands the wake to main"
 }
 
-test_return_during_a_failed_turn_still_hands_its_outcomes_to_main() {
-  local home
-  home=$(make_home away-return-fail away)
-  echo return-fail > "$home/stub-mode"
-  start_host "$home"
-  wait_until 150 watcher_live "$home" || fail "return-fail: the host never started a watcher cycle"
-  append_status "$home" 'mid-task, then a crash'
-  wait_until 250 host_exited "$home" || fail "return-fail: the host did not hand the wake to main"
+# The return-fail handback in its milestones, each with its own bound: the
+# engine starts (after the host read the wake and its successor proved live),
+# the stub returns (it wrote stub-returned just before exit 3), and the host
+# hands the wake to main. A host that exits early satisfies every milestone, so
+# its handback is judged by the assertions. Prints the milestone that timed out.
+engine_started() { [ "$(engine_calls "$1")" -gt 0 ] || host_exited "$1"; }
+stub_returned() { [ -e "$1/stub-returned" ] || host_exited "$1"; }
+await_return_fail_handback() {  # <home> <polls per milestone>
+  wait_until "$2" engine_started "$1" || { printf 'engine-start\n'; return 1; }
+  wait_until "$2" stub_returned "$1" || { printf 'stub-return\n'; return 1; }
+  wait_until "$2" host_exited "$1" || { printf 'handback\n'; return 1; }
+}
+return_fail_evidence() {  # <home>
+  printf 'host=%s log=%s return=%s' "$(cat "$1/host.out" 2>/dev/null)" \
+    "$(tail -n 8 "$1/state/.supervision-host.log" 2>/dev/null)" "$(cat "$1/engine-return.log" 2>/dev/null)"
+}
+assert_return_fail_handback() {  # <home>
+  local home=$1
   expect_code 0 "$(cat "$home/host.rc")" "a failed turn's handback must exit 0 for the owner to deliver"
   assert_absent "$home/state/.afk-contract" "fixture: the stub's return did not archive the record"
   assert_re '^supervision-host: the away session could not take this wake: the engine turn failed \(exit 3\); .*captain returned during its turn.*store rows 1[,)]' "$home/host.out" \
@@ -2533,7 +2549,60 @@ test_return_during_a_failed_turn_still_hands_its_outcomes_to_main() {
   assert_re '^supervision-host: outcome 1 for demo \[routine\]: stub handled demo$' "$home/host.out" \
     "the handback must carry the failed turn's outcome for main to relay"
   assert_re '	failed	turn=' "$home/state/.supervision-host.log" "the turn itself failed"
+}
+
+test_return_during_a_failed_turn_still_hands_its_outcomes_to_main() {
+  local home phase
+  home=$(make_home away-return-fail away)
+  echo return-fail > "$home/stub-mode"
+  start_host "$home"
+  wait_until 150 watcher_live "$home" || fail "return-fail: the host never started a watcher cycle"
+  append_status "$home" 'mid-task, then a crash'
+  phase=$(await_return_fail_handback "$home" 250) \
+    || fail "return-fail: the host did not hand the wake to main (timed out at $phase): $(return_fail_evidence "$home")"
+  assert_return_fail_handback "$home"
   pass "host: a captain return during a failed engine turn still hands that turn's outcomes to main"
+}
+
+# The handback is measured from the stub's return, not from the status append:
+# a turn held before its return outlasts a deadline started at the append and
+# is still handed back whole, while a host that never hands back fails at the
+# handback milestone.
+test_return_fail_handback_is_measured_from_the_stub_return() {
+  local home host phase
+  home=$(make_home away-return-fail-delayed away)
+  echo return-fail > "$home/stub-mode"
+  mkfifo "$home/stub-release"
+  start_host "$home"
+  wait_until 150 watcher_live "$home" || fail "delayed return-fail: the host never started a watcher cycle"
+  append_status "$home" 'mid-task, a slow return, then a crash'
+  wait_until 250 test -s "$home/stub-ready" || fail "delayed return-fail: the engine did not reach its hold: $(return_fail_evidence "$home")"
+  if wait_until 50 host_exited "$home"; then
+    fail "delayed return-fail: the host handed back before the stub returned: $(return_fail_evidence "$home")"
+  fi
+  printf 'continue\n' > "$home/stub-release"
+  phase=$(await_return_fail_handback "$home" 250) \
+    || fail "delayed return-fail: a valid delayed handback timed out at $phase: $(return_fail_evidence "$home")"
+  assert_return_fail_handback "$home"
+
+  home=$(make_home away-return-fail-absent away)
+  echo return-fail > "$home/stub-mode"
+  mkfifo "$home/stub-release"
+  start_host "$home"
+  wait_until 150 watcher_live "$home" || fail "absent handback: the host never started a watcher cycle"
+  append_status "$home" 'mid-task, then a crash nobody hands back'
+  wait_until 250 test -s "$home/stub-ready" || fail "absent handback: the engine did not reach its hold: $(return_fail_evidence "$home")"
+  host=$(awk -F '\t' '$1 == "host" { print $2; exit }' "$home/state/.supervision-host")
+  [ -n "$host" ] || fail "absent handback: the host recorded no pid"
+  kill -STOP "$host" || fail "absent handback: could not pause the host"
+  printf 'continue\n' > "$home/stub-release"
+  if phase=$(await_return_fail_handback "$home" 50); then
+    kill -CONT "$host"
+    fail "absent handback: a paused host counted as handing the wake back"
+  fi
+  kill -CONT "$host"
+  [ "$phase" = handback ] || fail "absent handback: expected the handback milestone to time out, got $phase: $(return_fail_evidence "$home")"
+  pass "host: a failed turn's handback is measured from the stub return, and a missing handback still fails"
 }
 
 test_incomplete_engine_result_hands_the_wake_to_main() {
@@ -3269,6 +3338,7 @@ test_outcome_after_the_return_survives_a_host_killed_at_the_turn_end
 test_next_host_clears_a_turn_its_killed_predecessor_left
 test_report_without_acknowledgement_hands_the_wake_to_main
 test_return_during_a_failed_turn_still_hands_its_outcomes_to_main
+test_return_fail_handback_is_measured_from_the_stub_return
 test_incomplete_engine_result_hands_the_wake_to_main
 test_latch_trips_after_two_engine_errors_then_probes_and_recovers
 test_latch_keeps_attended_closes_on_main_and_skips_unopted_homes
