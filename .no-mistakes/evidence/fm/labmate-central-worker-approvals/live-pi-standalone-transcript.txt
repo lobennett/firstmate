@@ -1,0 +1,9 @@
+## approvals records before=       6 after=       6; status lines before=       8 after=       8
+README.md
+live-proof.txt
+## pane
+ The command was blocked with an error: "live-coop-guard: no coordinator claimed; standalone refusal"
+ The user said: "If blocked, do not retry, just report it." So I should report this without retrying.
+ Blocked. The command was refused by a guard:
+   live-coop-guard: no coordinator claimed; standalone refusal
+ Per your instruction, I did not retry. standalone-proof.txt was not created.
